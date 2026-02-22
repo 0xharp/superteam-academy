@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import { PublicKey, SendTransactionError } from "@solana/web3.js";
-import { program, backendSigner, XP_MINT, TOKEN_2022_PROGRAM_ID } from "../lib/program.js";
+import {
+  program,
+  backendSigner,
+  XP_MINT,
+  TOKEN_2022_PROGRAM_ID,
+} from "../lib/program.js";
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -13,7 +18,10 @@ app.post("/", authMiddleware, async (c) => {
   const { courseId, learnerWallet } = body;
 
   if (!courseId || !learnerWallet) {
-    return c.json({ error: "Missing required fields: courseId, learnerWallet" }, 400);
+    return c.json(
+      { error: "Missing required fields: courseId, learnerWallet" },
+      400,
+    );
   }
 
   const learner = new PublicKey(learnerWallet);
@@ -24,10 +32,20 @@ app.post("/", authMiddleware, async (c) => {
   const courseAccount = await program.account.course.fetch(coursePDA);
   const creator = courseAccount.creator as PublicKey;
 
-  const [learnerATA, createLearnerAtaIx] = await getOrCreateATA(XP_MINT, learner, backendSigner.publicKey);
-  const [creatorATA, createCreatorAtaIx] = await getOrCreateATA(XP_MINT, creator, backendSigner.publicKey);
+  const [learnerATA, createLearnerAtaIx] = await getOrCreateATA(
+    XP_MINT,
+    learner,
+    backendSigner.publicKey,
+  );
+  const [creatorATA, createCreatorAtaIx] = await getOrCreateATA(
+    XP_MINT,
+    creator,
+    backendSigner.publicKey,
+  );
 
-  const preIxs = [createLearnerAtaIx, createCreatorAtaIx].filter(Boolean) as any[];
+  const preIxs = [createLearnerAtaIx, createCreatorAtaIx].filter(
+    Boolean,
+  ) as any[];
 
   const builder = program.methods
     .finalizeCourse()

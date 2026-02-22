@@ -20,9 +20,14 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
     const secret = new TextEncoder().encode(config.authSecret);
     const { payload } = await jose.jwtVerify(token, secret);
 
-    const userId = (payload.sub ?? payload.id ?? payload.email) as string | undefined;
+    const userId = (payload.sub ?? payload.id ?? payload.email) as
+      | string
+      | undefined;
     if (!userId) {
-      return c.json({ error: "Invalid token payload: no user identifier" }, 401);
+      return c.json(
+        { error: "Invalid token payload: no user identifier" },
+        401,
+      );
     }
 
     c.set("userId", userId);

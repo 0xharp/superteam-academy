@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import { PublicKey, SendTransactionError } from "@solana/web3.js";
-import { program, backendSigner, XP_MINT, TOKEN_2022_PROGRAM_ID } from "../lib/program.js";
+import {
+  program,
+  backendSigner,
+  XP_MINT,
+  TOKEN_2022_PROGRAM_ID,
+} from "../lib/program.js";
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -25,7 +30,9 @@ app.post("/", authMiddleware, async (c) => {
 
   if (!courseId || lessonIndex == null || !learnerWallet) {
     return c.json(
-      { error: "Missing required fields: courseId, lessonIndex, learnerWallet" },
+      {
+        error: "Missing required fields: courseId, lessonIndex, learnerWallet",
+      },
       400,
     );
   }
@@ -78,7 +85,7 @@ app.post("/", authMiddleware, async (c) => {
   // The program uses popcount(lessonFlags) == lessonCount for finalization.
   const enrollment = await program.account.enrollment.fetch(enrollmentPDA);
   const flags = enrollment.lessonFlags as unknown as { toString(): string }[];
-  const completedCount = flags.reduce((sum, f) => sum + popcount(f), 0);
+  const completedCount = flags.reduce((sum: number, f) => sum + popcount(f), 0);
   const isComplete = completedCount >= (courseAccount.lessonCount as number);
 
   let finalizeSignature: string | undefined;
@@ -117,7 +124,10 @@ app.post("/", authMiddleware, async (c) => {
         const logs = await err.getLogs(program.provider.connection);
         console.error("finalizeCourse failed:", err.message, logs);
       } else {
-        console.error("finalizeCourse failed:", err instanceof Error ? err.message : err);
+        console.error(
+          "finalizeCourse failed:",
+          err instanceof Error ? err.message : err,
+        );
       }
       // Not fatal — CourseAlreadyFinalized or transient error
     }

@@ -7,7 +7,11 @@ function loadKeypair(value: string): Keypair {
   const trimmed = value.trim();
 
   // File path
-  if (trimmed.startsWith("/") || trimmed.startsWith(".") || trimmed.startsWith("~")) {
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith(".") ||
+    trimmed.startsWith("~")
+  ) {
     const raw = fs.readFileSync(trimmed, "utf-8");
     const secretKey = Uint8Array.from(JSON.parse(raw));
     return Keypair.fromSecretKey(secretKey);

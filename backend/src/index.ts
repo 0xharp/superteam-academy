@@ -9,11 +9,14 @@ import rewardXp from "./routes/reward-xp.js";
 
 const app = new Hono();
 
-app.use("*", cors({
-  origin: process.env.APP_ORIGIN || "http://localhost:3000",
-  allowMethods: ["POST", "GET", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(
+  "*",
+  cors({
+    origin: process.env.APP_ORIGIN || "http://localhost:3000",
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
@@ -29,9 +32,12 @@ app.onError((err, c) => {
   return c.json({ error: message }, 500);
 });
 
-serve({
-  fetch: app.fetch,
-  port: config.port,
-}, (info) => {
-  console.log(`Backend listening on http://localhost:${info.port}`);
-});
+serve(
+  {
+    fetch: app.fetch,
+    port: config.port,
+  },
+  (info) => {
+    console.log(`Backend listening on http://localhost:${info.port}`);
+  },
+);

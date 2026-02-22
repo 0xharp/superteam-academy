@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { program, backendSigner, XP_MINT, TOKEN_2022_PROGRAM_ID } from "../lib/program.js";
+import {
+  program,
+  backendSigner,
+  XP_MINT,
+  TOKEN_2022_PROGRAM_ID,
+} from "../lib/program.js";
 import { getConfigPDA, getMinterRolePDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -14,14 +19,21 @@ app.post("/", authMiddleware, async (c) => {
   const { recipientWallet, amount, memo } = body;
 
   if (!recipientWallet || !amount || !memo) {
-    return c.json({ error: "Missing required fields: recipientWallet, amount, memo" }, 400);
+    return c.json(
+      { error: "Missing required fields: recipientWallet, amount, memo" },
+      400,
+    );
   }
 
   const recipient = new PublicKey(recipientWallet);
   const [configPDA] = getConfigPDA();
   const [minterRolePDA] = getMinterRolePDA(backendSigner.publicKey);
 
-  const [recipientATA, createAtaIx] = await getOrCreateATA(XP_MINT, recipient, backendSigner.publicKey);
+  const [recipientATA, createAtaIx] = await getOrCreateATA(
+    XP_MINT,
+    recipient,
+    backendSigner.publicKey,
+  );
 
   const builder = program.methods
     .rewardXp(new BN(amount), memo)
