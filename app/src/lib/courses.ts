@@ -2,6 +2,7 @@ import { sanityClient } from "@/lib/sanity/client";
 import {
   COURSES_QUERY,
   COURSES_BY_IDS_QUERY,
+  ALL_COURSES_BY_IDS_QUERY,
   COURSE_BY_SLUG_QUERY,
   TRACKS_QUERY,
 } from "@/lib/sanity/queries";
@@ -153,7 +154,8 @@ function sanityCourseToFull(c: Record<string, unknown>): Course {
     bonusXP,
     prerequisite: (c.prerequisite as { id: string; title: string } | null) ?? null,
     tags: (c.tags as string[]) || [],
-    published: true,
+    published: (c.published as boolean) ?? false,
+    submissionStatus: (c.submissionStatus as Course["submissionStatus"]) ?? undefined,
     createdAt: "",
     updatedAt: "",
     courseId: c.courseId as string | undefined,
@@ -166,6 +168,43 @@ function sanityCourseToFull(c: Record<string, unknown>): Course {
     minCompletionsForReward: c.minCompletionsForReward as number | undefined,
     prerequisiteCourseId: c.prerequisiteCourseId as string | undefined,
   };
+}
+
+/**
+ * Returns ALL on-chain course IDs (active and inactive).
+ * Used by the dashboard so enrolled users can see deactivated courses.
+ */
+async function getAllOnChainCourseIds(): Promise<string[] | null> {
+  if (!hasOnChain) return null;
+  try {
+    const { program } = await import("@/lib/solana/program");
+    const accounts = await program.account.course.all();
+    return accounts.map((a) => a.account.courseId as string);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns course cards for ALL on-chain courses (active + inactive).
+ * Used by the dashboard for enrollment display and rent reclaim.
+ */
+export async function getDashboardCourseCards(): Promise<CourseCardData[]> {
+  if (!hasSanity) return COURSE_CARDS;
+  try {
+    const onChainIds = await getAllOnChainCourseIds();
+    if (onChainIds !== null) {
+      if (onChainIds.length === 0) return [];
+      const results = await sanityClient.fetch(ALL_COURSES_BY_IDS_QUERY, { courseIds: onChainIds });
+      if (!results || results.length === 0) return [];
+      return results.map(sanityCourseToCardData);
+    }
+    const results = await sanityClient.fetch(COURSES_QUERY);
+    if (!results || results.length === 0) return [];
+    return results.map(sanityCourseToCardData);
+  } catch {
+    return [];
+  }
 }
 
 export async function getCourseCards(): Promise<CourseCardData[]> {

@@ -62,15 +62,17 @@ interface LessonViewProps {
   course: Course;
   slug: string;
   id: string;
+  preview?: boolean;
 }
 
-export default function LessonView({ lesson, mod, course, slug, id }: LessonViewProps) {
+export default function LessonView({ lesson, mod, course, slug, id, preview = false }: LessonViewProps) {
   const t = useTranslations("lessons");
   const tc = useTranslations("common");
   const router = useRouter();
 
   const allLessons = course.modules.flatMap((m) => m.lessons);
   const currentIdx = allLessons.findIndex((l) => l.id === lesson.id);
+  const basePath = preview ? `/courses/preview/${slug}` : `/courses/${slug}`;
 
   const { isLessonComplete, refreshEnrollment } = useEnrollment(course.courseId, allLessons.length);
 
@@ -182,9 +184,11 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
     );
     if (allPassed) {
       setCompleted(true);
-      trackEvent(ANALYTICS_EVENTS.CHALLENGE_PASS, { courseSlug: slug, lessonId: id, xp: course.xpPerLesson ?? 0 });
-      trackEvent(ANALYTICS_EVENTS.LESSON_COMPLETE, { courseSlug: slug, lessonId: id, type: "challenge" });
-      markComplete();
+      if (!preview) {
+        trackEvent(ANALYTICS_EVENTS.CHALLENGE_PASS, { courseSlug: slug, lessonId: id, xp: course.xpPerLesson ?? 0 });
+        trackEvent(ANALYTICS_EVENTS.LESSON_COMPLETE, { courseSlug: slug, lessonId: id, type: "challenge" });
+        markComplete();
+      }
     } else {
       trackEvent(ANALYTICS_EVENTS.CHALLENGE_FAIL, {
         courseSlug: slug,
@@ -228,11 +232,10 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
                 <AccordionContent className="pb-0">
                   {m.lessons.map((l) => {
                     const globalIdx = allLessons.findIndex((a) => a.id === l.id);
-                    // For the current lesson use local state (instant); others use on-chain bitmap.
-                    const done = l.id === lesson.id ? completed : isLessonComplete(globalIdx);
+                    const done = !preview && (l.id === lesson.id ? completed : isLessonComplete(globalIdx));
                     const current = l.id === lesson.id;
                     return (
-                      <Link key={l.id} href={`/courses/${slug}/lessons/${l.id}`}>
+                      <Link key={l.id} href={`${basePath}/lessons/${l.id}`}>
                         <div
                           className={`flex items-center gap-2 px-3 py-2 text-xs transition-colors
                             ${current
@@ -277,7 +280,7 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
         {/* Top bar */}
         <div className="flex items-center justify-between border-b px-4 py-2">
           <div className="flex items-center gap-3">
-            <Link href={`/courses/${slug}`}>
+            <Link href={basePath}>
               <Button variant="ghost" size="sm" className="gap-1">
                 <ArrowLeft className="h-4 w-4" />
                 {t("backToCourse")}
@@ -288,7 +291,7 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {completed && (
+            {!preview && completed && (
               <Badge variant="default" className="gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 {t("lessonComplete")}
@@ -492,28 +495,34 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
                 </div>
               )}
               <MarkdownRenderer content={lesson.content ?? ""} />
-              <div className="mt-8">
-                <Button
-                  className="gap-2"
-                  disabled={completed || completing}
-                  onClick={() => {
-                    trackEvent(ANALYTICS_EVENTS.LESSON_COMPLETE, {
-                      courseSlug: slug,
-                      lessonId: id,
-                      type: "content",
-                      xp: course.xpPerLesson ?? 0,
-                    });
-                    markComplete();
-                  }}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {completed
-                    ? t("lessonComplete")
-                    : completing
-                      ? "Submitting..."
-                      : `Mark as Complete (+${course.xpPerLesson ?? 0} ${tc("xp")})`}
-                </Button>
-              </div>
+              {preview ? (
+                <div className="mt-8 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                  <p className="text-sm text-muted-foreground">Preview mode — lesson completion is disabled.</p>
+                </div>
+              ) : (
+                <div className="mt-8">
+                  <Button
+                    className="gap-2"
+                    disabled={completed || completing}
+                    onClick={() => {
+                      trackEvent(ANALYTICS_EVENTS.LESSON_COMPLETE, {
+                        courseSlug: slug,
+                        lessonId: id,
+                        type: "content",
+                        xp: course.xpPerLesson ?? 0,
+                      });
+                      markComplete();
+                    }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {completed
+                      ? t("lessonComplete")
+                      : completing
+                        ? "Submitting..."
+                        : `Mark as Complete (+${course.xpPerLesson ?? 0} ${tc("xp")})`}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -521,7 +530,7 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
         {/* Bottom nav */}
         <div className="flex items-center justify-between border-t px-4 py-3">
           {prevLesson ? (
-            <Link href={`/courses/${slug}/lessons/${prevLesson.id}`}>
+            <Link href={`${basePath}/lessons/${prevLesson.id}`}>
               <Button variant="outline" size="sm" className="gap-1">
                 <ArrowLeft className="h-4 w-4" />
                 {tc("previous")}
@@ -534,14 +543,14 @@ export default function LessonView({ lesson, mod, course, slug, id }: LessonView
             {currentIdx + 1} / {allLessons.length}
           </span>
           {nextLesson ? (
-            <Link href={`/courses/${slug}/lessons/${nextLesson.id}`}>
+            <Link href={`${basePath}/lessons/${nextLesson.id}`}>
               <Button size="sm" className="gap-1">
                 {tc("next")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           ) : (
-            <Link href={`/courses/${slug}`}>
+            <Link href={basePath}>
               <Button size="sm" variant="outline">
                 {t("backToCourse")}
               </Button>

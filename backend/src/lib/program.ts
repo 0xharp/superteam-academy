@@ -21,6 +21,7 @@ export const TOKEN_2022_PROGRAM_ID = new PublicKey(
 
 export const connection = new Connection(config.rpcUrl, "confirmed");
 export const backendSigner = config.backendSigner;
+export const authoritySigner = config.authoritySigner;
 
 const wallet = new Wallet(backendSigner);
 const provider = new AnchorProvider(connection, wallet, {

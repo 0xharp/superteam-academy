@@ -47,3 +47,37 @@ export interface RewardXpResponse {
   success: boolean;
   signature: string;
 }
+
+export interface CreateCourseRequest {
+  courseId: string;
+  creator: string;
+  lessonCount: number;
+  difficulty: number;
+  xpPerLesson: number;
+  trackId: number;
+  trackLevel: number;
+  prerequisiteCourseId?: string | null;
+  creatorRewardXp: number;
+  minCompletionsForReward: number;
+  contentTxId: string;
+}
+
+export interface CreateCourseResponse {
+  success: boolean;
+  signature: string;
+  coursePDA: string;
+}
+
+export interface UpdateCourseRequest {
+  courseId: string;
+  newIsActive?: boolean;
+  newXpPerLesson?: number;
+  newCreatorRewardXp?: number;
+  newMinCompletionsForReward?: number;
+  newContentTxId?: string;
+}
+
+export interface UpdateCourseResponse {
+  success: boolean;
+  signature: string;
+}

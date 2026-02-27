@@ -1,3 +1,23 @@
+/** Submission lifecycle managed by admin. Set to WAITING when creator publishes in Sanity Studio. */
+export const SUBMISSION_STATUS = {
+  WAITING: "waiting",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  DEACTIVATED: "deactivated",
+} as const;
+
+export type SubmissionStatus = (typeof SUBMISSION_STATUS)[keyof typeof SUBMISSION_STATUS];
+
+/** Admin actions that map to submission status transitions. */
+export const COURSE_ACTIONS = {
+  APPROVE: "approve",
+  REJECT: "reject",
+  DEACTIVATE: "deactivate",
+  UPDATE: "update",
+} as const;
+
+export type CourseAction = (typeof COURSE_ACTIONS)[keyof typeof COURSE_ACTIONS];
+
 export interface Track {
   id: string;
   name: string;
@@ -75,6 +95,7 @@ export interface Course {
   prerequisite?: { id: string; title: string } | null;
   tags: string[];
   published: boolean;
+  submissionStatus?: SubmissionStatus;
   createdAt: string;
   updatedAt: string;
   // On-chain create_course parameters

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCourseCards } from "@/lib/courses";
+import { getDashboardCourseCards } from "@/lib/courses";
 import { useBulkEnrollments } from "@/hooks/use-bulk-enrollments";
 import { RentReclaimBanner } from "@/components/dashboard/rent-reclaim-banner";
 import type { CourseCardData } from "@/types/course";
@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
   // Load course cards
   useEffect(() => {
-    getCourseCards()
+    getDashboardCourseCards()
       .then(setAllCourses)
       .catch(() => {})
       .finally(() => setLoadingCourses(false));
@@ -157,32 +157,19 @@ export default function DashboardPage() {
           { id: 8, name: "Early Adopter", icon: "star", category: "special" as const, xpReward: 250, unlocked: false },
         ];
 
-  // Build the last 28 days as a real calendar grid
+  // Build the last 28 days as a real calendar grid using actual activity dates
   const streakDays = (() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Determine when the streak ended (today if active, lastActivityDate otherwise)
-    let streakEnd: Date | null = null;
-    if (stats.streak.isActiveToday) {
-      streakEnd = today;
-    } else if (stats.streak.lastActivityDate) {
-      const d = new Date(stats.streak.lastActivityDate);
-      d.setHours(0, 0, 0, 0);
-      streakEnd = d;
-    }
+    const activeDatesSet = new Set(stats.streak.activityDates ?? []);
 
     return Array.from({ length: 28 }, (_, i) => {
       const date = new Date(today);
       date.setDate(today.getDate() - 27 + i);
+      const dateStr = date.toISOString().split("T")[0];
 
-      let active = false;
-      if (streakEnd && stats.currentStreak > 0) {
-        const diffDays = Math.round((streakEnd.getTime() - date.getTime()) / 86400000);
-        active = diffDays >= 0 && diffDays < stats.currentStreak;
-      }
-
-      return { date, active, isToday: i === 27 };
+      return { date, active: activeDatesSet.has(dateStr), isToday: i === 27 };
     });
   })();
 

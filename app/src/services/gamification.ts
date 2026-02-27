@@ -11,6 +11,41 @@ import { getCoursePDA } from "@/lib/solana/on-chain";
 
 const DAILY_XP_CAP = 2000;
 
+/** Calculate the number of missed days between lastActivityDate and yesterday. */
+function getMissedDays(lastActivityDate: string): number {
+  const last = new Date(lastActivityDate + "T00:00:00Z");
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  yesterday.setUTCHours(0, 0, 0, 0);
+  const diffMs = yesterday.getTime() - last.getTime();
+  return Math.max(0, Math.round(diffMs / 86400000));
+}
+
+/** Update streak accounting for gap days and available freezes. */
+function computeNewStreak(
+  lastActivityDate: string | null,
+  today: string,
+  currentStreak: number,
+  freezes: number,
+): { newStreak: number; freezesUsed: number } {
+  if (!lastActivityDate) return { newStreak: 1, freezesUsed: 0 };
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+  if (lastActivityDate === yesterdayStr) {
+    return { newStreak: currentStreak + 1, freezesUsed: 0 };
+  }
+
+  const missed = getMissedDays(lastActivityDate);
+  if (missed > 0 && missed <= freezes) {
+    return { newStreak: currentStreak + 1, freezesUsed: missed };
+  }
+
+  return { newStreak: 1, freezesUsed: 0 };
+}
+
 const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlocked" | "unlockedAt">[] =
   [
     { id: 0, name: "First Steps", description: "Complete your first lesson", icon: "footprints", category: "progress", xpReward: 50 },
@@ -95,18 +130,14 @@ class MockGamificationService implements GamificationService {
     });
 
     if (data.streak.lastActivityDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-      if (data.streak.lastActivityDate === yesterdayStr) {
-        data.streak.currentStreak += 1;
-      } else if (data.streak.lastActivityDate && data.streak.streakFreezes > 0) {
-        data.streak.streakFreezes -= 1;
-        data.streak.currentStreak += 1;
-      } else {
-        data.streak.currentStreak = 1;
-      }
+      const { newStreak, freezesUsed } = computeNewStreak(
+        data.streak.lastActivityDate,
+        today,
+        data.streak.currentStreak,
+        data.streak.streakFreezes,
+      );
+      data.streak.currentStreak = newStreak;
+      data.streak.streakFreezes -= freezesUsed;
       data.streak.lastActivityDate = today;
       data.streak.isActiveToday = true;
       if (data.streak.currentStreak > data.streak.longestStreak) {
@@ -119,17 +150,14 @@ class MockGamificationService implements GamificationService {
     const data = getOrCreate(userId);
     const today = new Date().toISOString().split("T")[0];
     if (data.streak.lastActivityDate === today) return;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-    if (data.streak.lastActivityDate === yesterdayStr) {
-      data.streak.currentStreak += 1;
-    } else if (data.streak.lastActivityDate && data.streak.streakFreezes > 0) {
-      data.streak.streakFreezes -= 1;
-      data.streak.currentStreak += 1;
-    } else {
-      data.streak.currentStreak = 1;
-    }
+    const { newStreak, freezesUsed } = computeNewStreak(
+      data.streak.lastActivityDate,
+      today,
+      data.streak.currentStreak,
+      data.streak.streakFreezes,
+    );
+    data.streak.currentStreak = newStreak;
+    data.streak.streakFreezes -= freezesUsed;
     data.streak.lastActivityDate = today;
     data.streak.isActiveToday = true;
     if (data.streak.currentStreak > data.streak.longestStreak) {
@@ -196,11 +224,32 @@ class SupabaseGamificationService implements GamificationService {
   }
 
   async getStreak(userId: string): Promise<StreakData> {
-    const { data } = await this.db
-      .from("user_stats")
-      .select("current_streak, longest_streak, last_activity_date, streak_freezes")
-      .eq("user_id", userId)
-      .single();
+    const today = new Date().toISOString().split("T")[0];
+    const twentyEightDaysAgo = new Date();
+    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 27);
+    const sinceDate = twentyEightDaysAgo.toISOString().split("T")[0];
+
+    const [{ data }, { data: txRows }] = await Promise.all([
+      this.db
+        .from("user_stats")
+        .select("current_streak, longest_streak, last_activity_date, streak_freezes")
+        .eq("user_id", userId)
+        .single(),
+      this.db
+        .from("xp_transactions")
+        .select("transaction_at")
+        .eq("user_id", userId)
+        .gte("transaction_at", `${sinceDate}T00:00:00Z`),
+    ]);
+
+    // Extract unique dates from transactions
+    const activityDates = [
+      ...new Set(
+        (txRows ?? []).map((r: { transaction_at: string }) =>
+          r.transaction_at.split("T")[0],
+        ),
+      ),
+    ].sort();
 
     if (!data) {
       return {
@@ -209,16 +258,17 @@ class SupabaseGamificationService implements GamificationService {
         lastActivityDate: null,
         streakFreezes: 3,
         isActiveToday: false,
+        activityDates,
       };
     }
 
-    const today = new Date().toISOString().split("T")[0];
     return {
       currentStreak: data.current_streak ?? 0,
       longestStreak: data.longest_streak ?? 0,
       lastActivityDate: data.last_activity_date ?? null,
       streakFreezes: data.streak_freezes ?? 0,
       isActiveToday: data.last_activity_date === today,
+      activityDates,
     };
   }
 
@@ -282,18 +332,14 @@ class SupabaseGamificationService implements GamificationService {
     let newFreezes = currentStats.streakFreezes;
 
     if (currentStats.lastActivityDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-      if (currentStats.lastActivityDate === yesterdayStr) {
-        newStreak += 1;
-      } else if (currentStats.lastActivityDate && newFreezes > 0) {
-        newFreezes -= 1;
-        newStreak += 1;
-      } else {
-        newStreak = 1;
-      }
+      const result = computeNewStreak(
+        currentStats.lastActivityDate,
+        today,
+        currentStats.currentStreak,
+        newFreezes,
+      );
+      newStreak = result.newStreak;
+      newFreezes -= result.freezesUsed;
       if (newStreak > newLongest) newLongest = newStreak;
     }
 
@@ -325,20 +371,16 @@ class SupabaseGamificationService implements GamificationService {
       return;
     }
     if (stats.last_activity_date === today) return;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-    let newStreak = stats.current_streak ?? 0;
     let newLongest = stats.longest_streak ?? 0;
     let newFreezes = stats.streak_freezes ?? 0;
-    if (stats.last_activity_date === yesterdayStr) {
-      newStreak += 1;
-    } else if (stats.last_activity_date && newFreezes > 0) {
-      newFreezes -= 1;
-      newStreak += 1;
-    } else {
-      newStreak = 1;
-    }
+    const result = computeNewStreak(
+      stats.last_activity_date,
+      today,
+      stats.current_streak ?? 0,
+      newFreezes,
+    );
+    const newStreak = result.newStreak;
+    newFreezes -= result.freezesUsed;
     if (newStreak > newLongest) newLongest = newStreak;
     await this.db
       .from("user_stats")

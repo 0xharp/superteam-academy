@@ -6,6 +6,8 @@ import completeLesson from "./routes/complete-lesson.js";
 import finalizeCourse from "./routes/finalize-course.js";
 import issueCredential from "./routes/issue-credential.js";
 import rewardXp from "./routes/reward-xp.js";
+import createCourse from "./routes/create-course.js";
+import updateCourse from "./routes/update-course.js";
 
 const app = new Hono();
 
@@ -24,6 +26,8 @@ app.route("/complete-lesson", completeLesson);
 app.route("/finalize-course", finalizeCourse);
 app.route("/issue-credential", issueCredential);
 app.route("/reward-xp", rewardXp);
+app.route("/create-course", createCourse);
+app.route("/update-course", updateCourse);
 
 app.onError((err, c) => {
   console.error(`[${c.req.method}] ${c.req.url}`, err);

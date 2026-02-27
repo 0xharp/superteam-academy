@@ -6,5 +6,6 @@ declare module "next-auth" {
     linkedAccounts: string[];
     provider: string;
     switchedProfileName?: string;
+    isAdmin?: boolean;
   }
 }

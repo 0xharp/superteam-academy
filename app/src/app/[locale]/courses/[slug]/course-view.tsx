@@ -20,6 +20,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { Course } from "@/types/course";
+import { SUBMISSION_STATUS } from "@/types/course";
 import {
   BookOpen,
   Clock,
@@ -35,7 +36,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-export default function CourseView({ course, slug }: { course: Course; slug: string }) {
+export default function CourseView({ course, slug, preview = false }: { course: Course; slug: string; preview?: boolean }) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
   const wallet = useWallet();
@@ -166,9 +167,9 @@ export default function CourseView({ course, slug }: { course: Course; slug: str
                       <div className="space-y-2">
                         {mod.lessons.map((lesson) => {
                           const lessonIdx = globalIdx++;
-                          const done = enrolled && !checking && isLessonComplete(lessonIdx);
+                          const done = !preview && enrolled && !checking && isLessonComplete(lessonIdx);
                           return (
-                            <Link key={lesson.id} href={`/courses/${slug}/lessons/${lesson.id}`}>
+                            <Link key={lesson.id} href={preview ? `/courses/preview/${slug}/lessons/${lesson.id}` : `/courses/${slug}/lessons/${lesson.id}`}>
                               <div className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-accent">
                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
                                   {lesson.type === "challenge" ? (
@@ -193,12 +194,14 @@ export default function CourseView({ course, slug }: { course: Course; slug: str
                                     )}
                                   </div>
                                 </div>
-                                <CheckCircle2
-                                  className={`h-4 w-4 shrink-0 transition-colors ${done
-                                    ? "text-green-500"
-                                    : "text-muted-foreground/30"
-                                    }`}
-                                />
+                                {!preview && (
+                                  <CheckCircle2
+                                    className={`h-4 w-4 shrink-0 transition-colors ${done
+                                      ? "text-green-500"
+                                      : "text-muted-foreground/30"
+                                      }`}
+                                  />
+                                )}
                               </div>
                             </Link>
                           );
@@ -216,15 +219,44 @@ export default function CourseView({ course, slug }: { course: Course; slug: str
         <div className="space-y-6">
           <Card className="sticky top-24">
             <CardContent className="p-6">
-              <div className="mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{t("progress")}</span>
-                  <span className="font-medium">{Math.round(progress)}%</span>
+              {!preview && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{t("progress")}</span>
+                    <span className="font-medium">{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="mt-2" />
                 </div>
-                <Progress value={progress} className="mt-2" />
-              </div>
+              )}
 
-              {checking ? (
+              {preview ? (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-center">
+                  <p className="text-sm font-medium text-primary">Course Preview</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    This is a preview. Once approved, this course will be visible in the catalog and learners can enroll.
+                  </p>
+                </div>
+              ) : course.submissionStatus === SUBMISSION_STATUS.DEACTIVATED ? (
+                <div className="rounded-lg border border-muted-foreground/30 bg-muted/30 p-4 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">Course Deactivated</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    This course has been deactivated. New enrollments are closed, but enrolled learners can still complete it.
+                  </p>
+                </div>
+              ) : !course.published && course.submissionStatus !== SUBMISSION_STATUS.APPROVED ? (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-center">
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    {course.submissionStatus === SUBMISSION_STATUS.REJECTED
+                      ? "Course Needs Revision"
+                      : "Pending Approval"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {course.submissionStatus === SUBMISSION_STATUS.REJECTED
+                      ? "This course has been sent back for revision by an admin."
+                      : "This course has been submitted and is awaiting admin approval. Enrollment will be available once approved."}
+                  </p>
+                </div>
+              ) : checking ? (
                 <Button className="w-full gap-2" size="lg" variant="secondary" disabled>
                   Checking...
                 </Button>

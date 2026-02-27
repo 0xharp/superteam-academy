@@ -19,3 +19,23 @@ export async function requireAuth(): Promise<AuthResult> {
     session: session as Session & { user: { id: string } },
   };
 }
+
+export async function requireAdmin(): Promise<AuthResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      session: null,
+    };
+  }
+  if (!session.isAdmin) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      session: null,
+    };
+  }
+  return {
+    error: null,
+    session: session as Session & { user: { id: string } },
+  };
+}

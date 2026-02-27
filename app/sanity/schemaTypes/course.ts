@@ -50,6 +50,7 @@ export const course = defineType({
       title: "Difficulty",
       type: "string",
       options: { list: ["beginner", "intermediate", "advanced"] },
+      validation: (r) => r.required(),
     }),
     defineField({
       name: "track",
@@ -77,9 +78,39 @@ export const course = defineType({
     }),
     defineField({
       name: "published",
-      title: "Published",
+      title: "Published (visible to learners)",
       type: "boolean",
       initialValue: false,
+      description:
+        "Controlled by admin approval. Do NOT toggle manually — " +
+        "set to true automatically when admin approves the course.",
+      readOnly: true,
+    }),
+    defineField({
+      name: "submissionStatus",
+      title: "Submission Status",
+      type: "string",
+      options: {
+        list: [
+          { title: "Waiting For Approval", value: "waiting" },
+          { title: "Approved & Published", value: "approved" },
+          { title: "Rejected", value: "rejected" },
+          { title: "Deactivated", value: "deactivated" },
+        ],
+      },
+      description:
+        "Managed automatically. When you publish this document, " +
+        "status is set to 'Waiting For Approval'. " +
+        "Admin then approves, rejects, or deactivates.",
+      readOnly: true,
+    }),
+    defineField({
+      name: "reviewComment",
+      title: "Review Comment",
+      type: "text",
+      rows: 3,
+      description: "Admin feedback when rejecting a course. Read-only for creators.",
+      readOnly: true,
     }),
 
     // ── On-Chain: create_course parameters ──────────────────────────────────
@@ -91,6 +122,7 @@ export const course = defineType({
         "Uniform XP minted by the program on every lesson completion (complete_lesson). " +
         "ALL lessons in this course award this exact amount. " +
         "The finalize_course bonus is automatically 50% of this × lessonCount.",
+      validation: (r) => r.required().integer().min(1),
     }),
     defineField({
       name: "lessonCount",
@@ -107,6 +139,7 @@ export const course = defineType({
       title: "Track ID (On-Chain)",
       type: "number",
       description: "Numeric track identifier — used as trackId in create_course.",
+      validation: (r) => r.required().integer().min(0),
     }),
     defineField({
       name: "trackLevel",
@@ -115,6 +148,7 @@ export const course = defineType({
       description:
         "Level within the track (1 = intro, 2 = intermediate, 3 = advanced). " +
         "Used as trackLevel in create_course.",
+      validation: (r) => r.required().integer().min(1).max(3),
     }),
     defineField({
       name: "creator",
@@ -124,22 +158,25 @@ export const course = defineType({
         "Solana wallet address (base58) of the course creator. " +
         "Receives creatorRewardXp when minCompletionsForReward learners finish this course. " +
         "Used as creator in create_course.",
+      validation: (r) => r.required(),
     }),
     defineField({
       name: "creatorRewardXp",
       title: "Creator Reward XP",
       type: "number",
       description:
-        "Suggested XP to mint to the creator's wallet each time the completion threshold is met. " +
-        "Admin may override this value during on-chain course registration (create_course).",
+        "XP minted to the creator's wallet each time the completion threshold is met. " +
+        "Admin may override this value during approval.",
+      validation: (r) => r.required().integer().min(1),
     }),
     defineField({
       name: "minCompletionsForReward",
       title: "Min Completions for Creator Reward",
       type: "number",
       description:
-        "Suggested number of learners who must complete this course before the creator reward triggers. " +
-        "Admin may override this value during on-chain course registration (create_course).",
+        "Number of learners who must complete this course before the creator reward triggers. " +
+        "Admin may override this value during approval.",
+      validation: (r) => r.required().integer().min(1),
     }),
     defineField({
       name: "prerequisiteCourseId",

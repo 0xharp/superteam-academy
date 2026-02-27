@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignInModal } from "./sign-in-modal";
-import { User, Settings, LayoutDashboard, LogOut, Trophy, Star, Zap, Flame } from "lucide-react";
+import { User, Settings, LayoutDashboard, LogOut, Trophy, Star, Zap, Flame, Shield, BookOpen } from "lucide-react";
 
 interface Stats { xp: number; level: number; streak: number }
 
@@ -146,6 +146,20 @@ export function UserMenu() {
             {t("leaderboard")}
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/creator" className="cursor-pointer">
+            <BookOpen className="mr-2 h-4 w-4" />
+            {t("creator")}
+          </Link>
+        </DropdownMenuItem>
+        {session.isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin" className="cursor-pointer">
+              <Shield className="mr-2 h-4 w-4" />
+              {t("admin")}
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/settings" className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />

@@ -4,6 +4,8 @@ export interface StreakData {
   lastActivityDate: string | null;
   streakFreezes: number;
   isActiveToday: boolean;
+  /** Dates (YYYY-MM-DD) with activity in the last 28 days, used by the calendar. */
+  activityDates?: string[];
 }
 
 export interface Achievement {

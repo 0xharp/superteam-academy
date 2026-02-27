@@ -39,6 +39,7 @@ function requireEnv(name: string): string {
 export const config = {
   rpcUrl: requireEnv("SOLANA_RPC_URL"),
   backendSigner: loadKeypair(requireEnv("BACKEND_SIGNER_KEYPAIR")),
+  authoritySigner: loadKeypair(requireEnv("AUTHORITY_KEYPAIR")),
   authSecret: requireEnv("AUTH_SECRET"),
   port: parseInt(process.env.PORT || "3001", 10),
 };

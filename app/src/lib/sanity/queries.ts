@@ -61,6 +61,8 @@ export const COURSE_BY_SLUG_QUERY = `*[_type == "course" && courseId.current == 
   },
   "prerequisite": *[_type == "course" && courseId.current == ^.prerequisiteCourseId][0]{"id": courseId.current, title},
   tags,
+  published,
+  submissionStatus,
   ${COURSE_ONCHAIN_FIELDS}
 }`;
 
@@ -75,6 +77,24 @@ export const COURSE_BY_COURSE_ID_QUERY = `*[_type == "course" && courseId.curren
   track->{name, "slug": slug.current, icon, color, trackId},
   "totalLessons": count(modules[]->lessons[]),
   "totalDuration": math::sum(modules[]->lessons[]->duration),
+  ${COURSE_ONCHAIN_FIELDS}
+}`;
+
+// Same as COURSES_BY_IDS_QUERY but without the published filter — used for dashboard
+// enrollment display where deactivated courses should still appear.
+export const ALL_COURSES_BY_IDS_QUERY = `*[_type == "course" && courseId.current in $courseIds] | order(_createdAt desc) {
+  _id,
+  title,
+  "slug": courseId.current,
+  description,
+  "thumbnailUrl": thumbnail.asset->url,
+  "thumbnailHotspot": thumbnail.hotspot,
+  difficulty,
+  track->{name, "slug": slug.current, icon, color, trackId, collectionAddress},
+  instructor->{name, avatar, bio},
+  "totalLessons": count(modules[]->lessons[]),
+  "totalDuration": math::sum(modules[]->lessons[]->duration),
+  tags,
   ${COURSE_ONCHAIN_FIELDS}
 }`;
 
