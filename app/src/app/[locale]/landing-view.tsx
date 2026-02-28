@@ -447,14 +447,15 @@ export default function LandingView({ courseCards, activeTracks }: LandingViewPr
                           </div>
                         </div>
 
-                        {/* Always show progress bar (0% if not enrolled) */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                            <span>Progress</span>
-                            <span>{Math.round(progress)}%</span>
+                        {progress > 0 && (
+                          <div className="mt-4">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span>Progress</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <Progress value={progress} className="h-1.5" />
                           </div>
-                          <Progress value={progress} className="h-1.5" />
-                        </div>
+                        )}
 
                         {/* Stage progression */}
                         {stages.length > 0 && (

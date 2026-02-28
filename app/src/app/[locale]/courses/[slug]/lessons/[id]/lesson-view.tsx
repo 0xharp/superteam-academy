@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
@@ -56,6 +56,10 @@ const MonacoEditor = dynamic(
   },
 );
 
+// Tracks locally-confirmed lesson completions so green ticks survive navigation
+// before the RPC fetch returns. Keyed as "courseId:lessonIndex".
+const confirmedComplete = new Set<string>();
+
 interface LessonViewProps {
   lesson: Lesson;
   mod: Module;
@@ -68,6 +72,7 @@ interface LessonViewProps {
 export default function LessonView({ lesson, mod, course, slug, id, preview = false }: LessonViewProps) {
   const t = useTranslations("lessons");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
 
   const allLessons = course.modules.flatMap((m) => m.lessons);
@@ -102,6 +107,18 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
       setCompleted(true);
     }
   }, [isLessonComplete, currentIdx]);
+
+  // Backfill the local Set from the on-chain bitmap so ticks survive navigation
+  const courseId = course.courseId;
+  const lessonCount = allLessons.length;
+  useEffect(() => {
+    if (!courseId) return;
+    for (let i = 0; i < lessonCount; i++) {
+      if (isLessonComplete(i)) {
+        confirmedComplete.add(`${courseId}:${i}`);
+      }
+    }
+  }, [isLessonComplete, courseId, lessonCount]);
 
   // Set Monaco error markers when test results change
   useEffect(() => {
@@ -150,6 +167,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
       } else {
         const data = await res.json() as { xpEarned?: number; finalized?: boolean };
         setCompleted(true);
+        if (course.courseId) confirmedComplete.add(`${course.courseId}:${currentIdx}`);
         refreshEnrollment();
         toast.success(`+${data.xpEarned ?? 0} ${tc("xp")} earned!`);
         if (data.finalized) {
@@ -158,7 +176,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
               <div className="space-y-1">
                 <p>
                   Go to the{" "}
-                  <a href={`/courses/${slug}`} className="underline font-medium">
+                  <a href={`/${locale}/courses/${slug}`} className="underline font-medium">
                     course page
                   </a>{" "}
                   to collect your credential NFT and reclaim rent.
@@ -245,7 +263,11 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
                 <AccordionContent className="pb-0">
                   {m.lessons.map((l) => {
                     const globalIdx = allLessons.findIndex((a) => a.id === l.id);
-                    const done = !preview && (l.id === lesson.id ? completed : isLessonComplete(globalIdx));
+                    const done = !preview && (
+                      l.id === lesson.id
+                        ? completed
+                        : isLessonComplete(globalIdx) || confirmedComplete.has(`${course.courseId}:${globalIdx}`)
+                    );
                     const current = l.id === lesson.id;
                     return (
                       <Link key={l.id} href={`${basePath}/lessons/${l.id}`}>

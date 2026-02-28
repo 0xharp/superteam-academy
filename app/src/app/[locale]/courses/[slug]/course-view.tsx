@@ -65,7 +65,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user, sessionProvider]);
   // Check if this course was already completed via credential completedCourseIds
-  const { credentials } = useOnChainProgress(walletAddress);
+  const { credentials, loading: credentialsLoading } = useOnChainProgress(walletAddress);
   const alreadyCompleted = useMemo(() => {
     if (!course.courseId || !course.track.trackId) return false;
     const trackCred = credentials.find((c) => c.trackId === course.track.trackId);
@@ -276,7 +276,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
         <div className="space-y-6">
           <Card className="sticky top-24">
             <CardContent className="p-6">
-              {!preview && (
+              {!preview && enrolled && !alreadyCompleted && (
                 <div className="mb-6">
                   <div className="flex items-center justify-between text-sm">
                     <span>{t("progress")}</span>
@@ -325,10 +325,10 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                     </p>
                   </div>
                 </div>
-              ) : checking ? (
-                <Button className="w-full gap-2" size="lg" variant="secondary" disabled>
-                  {t("checking")}
-                </Button>
+              ) : (checking || credentialsLoading) ? (
+                <div className="flex items-center justify-center py-3">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
               ) : !session?.user ? (
                 <>
                   <Button

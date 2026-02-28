@@ -121,13 +121,14 @@ export default function CoursesView({ courses, tracks }: CoursesViewProps) {
                         </div>
                       </div>
 
-                      {/* Always show progress bar */}
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                          <span>{t("percentComplete", { percent: Math.round(progress) })}</span>
+                      {progress > 0 && (
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>{t("percentComplete", { percent: Math.round(progress) })}</span>
+                          </div>
+                          <Progress value={progress} className="h-1.5" />
                         </div>
-                        <Progress value={progress} className="h-1.5" />
-                      </div>
+                      )}
 
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                         <span>{t("courseCount", { count: trackCourses.length })}</span>
