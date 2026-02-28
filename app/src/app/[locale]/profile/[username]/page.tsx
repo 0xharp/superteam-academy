@@ -2,8 +2,19 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { profileService } from "@/services/profile";
 import { skillsService } from "@/services/skills";
+import { getCourseTitleMap, getTracks } from "@/lib/courses";
 import { redirect } from "@/i18n/routing";
 import ProfileView from "./profile-view";
+
+/** Build lookup maps from Sanity course/track data */
+async function buildMaps() {
+  const [courseMap, tracks] = await Promise.all([getCourseTitleMap(), getTracks()]);
+  const trackMap: Record<number, string> = {};
+  for (const t of tracks) {
+    if (t.trackId != null) trackMap[t.trackId] = t.name;
+  }
+  return { courseMap, trackMap };
+}
 
 export default async function ProfilePage({
   params,
@@ -23,17 +34,18 @@ export default async function ProfilePage({
     const profile = await profileService.getProfileById(session.user.id);
     if (!profile) notFound();
 
-    const [stats, completedCourses, skills] = await Promise.all([
+    const [stats, skills, { courseMap, trackMap }] = await Promise.all([
       profileService.getProfileStats(session.user.id),
-      profileService.getCompletedCourses(session.user.id),
       skillsService.getSkills(session.user.id),
+      buildMaps(),
     ]);
 
     return (
       <ProfileView
         profile={profile}
         stats={stats}
-        completedCourses={completedCourses}
+        courseMap={courseMap}
+        trackMap={trackMap}
         skills={skills}
         isOwner={true}
       />
@@ -51,17 +63,18 @@ export default async function ProfilePage({
   }
 
   const isOwner = session?.user?.id === profile.id;
-  const [stats, completedCourses, skills] = await Promise.all([
+  const [stats, skills, { courseMap, trackMap }] = await Promise.all([
     profileService.getProfileStats(profile.id),
-    profileService.getCompletedCourses(profile.id),
     skillsService.getSkills(profile.id),
+    buildMaps(),
   ]);
 
   return (
     <ProfileView
       profile={profile}
       stats={stats}
-      completedCourses={completedCourses}
+      courseMap={courseMap}
+      trackMap={trackMap}
       skills={skills}
       isOwner={isOwner}
     />

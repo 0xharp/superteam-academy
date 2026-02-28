@@ -6,7 +6,6 @@ export const TRACKS = [
     name: "Solana Core",
     slug: "solana-core",
     description: "Core Solana development fundamentals",
-    icon: "cpu",
     color: "#9945FF",
   },
   {
@@ -14,7 +13,6 @@ export const TRACKS = [
     name: "DeFi",
     slug: "defi",
     description: "Decentralized finance protocols",
-    icon: "banknote",
     color: "#14F195",
   },
   {
@@ -22,7 +20,6 @@ export const TRACKS = [
     name: "NFTs",
     slug: "nft",
     description: "Non-fungible tokens and digital assets",
-    icon: "image",
     color: "#ffd23f",
   },
   {
@@ -30,7 +27,6 @@ export const TRACKS = [
     name: "Anchor",
     slug: "anchor",
     description: "Anchor framework for Solana programs",
-    icon: "anchor",
     color: "#00D1FF",
   },
   {
@@ -38,7 +34,6 @@ export const TRACKS = [
     name: "Web3 Integration",
     slug: "web3",
     description: "Integrating Solana into web applications",
-    icon: "globe",
     color: "#FF6B6B",
   },
 ];

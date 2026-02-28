@@ -23,7 +23,6 @@ export interface Track {
   name: string;
   slug: string;
   description: string;
-  icon: string;
   color: string;
   trackId?: number;
   collectionAddress?: string;

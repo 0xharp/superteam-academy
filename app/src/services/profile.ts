@@ -1,7 +1,6 @@
 import type {
   UserProfile,
   UserStats,
-  Enrollment,
   ProfileUpdateData,
 } from "@/types/user";
 import type { ProfileService } from "./interfaces";
@@ -9,7 +8,6 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import {
   rowToProfile,
   rowToUserStats,
-  rowToEnrollment,
 } from "@/lib/supabase/mappers";
 
 // --- Mock Implementation ---
@@ -46,18 +44,6 @@ const MOCK_STATS: UserStats = {
   updatedAt: "2026-02-16T00:00:00Z",
 };
 
-const MOCK_ENROLLMENTS: Enrollment[] = [
-  {
-    id: "enroll-1",
-    userId: "mock-user-id",
-    courseId: "intro-to-solana",
-    enrolledAt: "2026-01-20T00:00:00Z",
-    completedAt: "2026-02-10T00:00:00Z",
-    progressPct: 100,
-    lessonFlags: [1023, 0, 0, 0],
-  },
-];
-
 class MockProfileService implements ProfileService {
   private profile = { ...MOCK_PROFILE };
 
@@ -91,10 +77,6 @@ class MockProfileService implements ProfileService {
 
   async getProfileStats(_userId: string): Promise<UserStats | null> {
     return { ...MOCK_STATS };
-  }
-
-  async getCompletedCourses(_userId: string): Promise<Enrollment[]> {
-    return MOCK_ENROLLMENTS.filter((e) => e.completedAt !== null);
   }
 
   async ensureProfile(): Promise<void> {
@@ -188,17 +170,6 @@ class SupabaseProfileService implements ProfileService {
       .single();
     if (error || !data) return null;
     return rowToUserStats(data);
-  }
-
-  async getCompletedCourses(userId: string): Promise<Enrollment[]> {
-    const { data, error } = await this.db
-      .from("enrollments")
-      .select("*")
-      .eq("user_id", userId)
-      .not("completed_at", "is", null)
-      .order("completed_at", { ascending: false });
-    if (error || !data) return [];
-    return data.map(rowToEnrollment);
   }
 
   async ensureProfile(user: {

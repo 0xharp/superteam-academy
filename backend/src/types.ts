@@ -29,6 +29,7 @@ export interface IssueCredentialRequest {
   metadataUri: string;
   coursesCompleted: number;
   totalXp: number;
+  completedCourseIds?: string;
 }
 
 export interface IssueCredentialResponse {
@@ -80,4 +81,20 @@ export interface UpdateCourseRequest {
 export interface UpdateCourseResponse {
   success: boolean;
   signature: string;
+}
+
+export interface UpgradeCredentialRequest {
+  courseId: string;
+  learnerWallet: string;
+  credentialAsset: string;
+  credentialName: string;
+  metadataUri: string;
+  coursesCompleted: number;
+  totalXp: number;
+}
+
+export interface UpgradeCredentialResponse {
+  success: boolean;
+  signature: string;
+  credentialAsset: string;
 }

@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardCourseCards } from "@/lib/courses";
 import { useBulkEnrollments } from "@/hooks/use-bulk-enrollments";
+import { useOnChainProgress } from "@/hooks/use-onchain-progress";
 import { RentReclaimBanner } from "@/components/dashboard/rent-reclaim-banner";
 import type { CourseCardData } from "@/types/course";
 import type { StreakData, Achievement, XPTransaction } from "@/types/gamification";
@@ -66,6 +67,8 @@ export default function DashboardPage() {
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [allCourses, setAllCourses] = useState<CourseCardData[]>([]);
 
+  const { credentialCoursesCompleted } = useOnChainProgress(session?.walletAddress);
+
   // Load course cards
   useEffect(() => {
     getDashboardCourseCards()
@@ -84,17 +87,24 @@ export default function DashboardPage() {
       return { ...c, progress: e.progressPct };
     });
 
-  // "Completed" = all lessons done (100%) OR finalize_course has run (completedAt set)
-  const coursesCompleted = enrollments.filter(
-    (e) => e.progressPct >= 100 || e.completedAt !== null,
+  // Credentials persist after close_enrollment deletes the enrollment PDA.
+  // Count = credential-based total + finalized enrollments still open (no credential yet).
+  const finalizedWithoutCredential = enrollments.filter(
+    (e) =>
+      (e.progressPct >= 100 || e.completedAt !== null) &&
+      (!e.credentialAsset ||
+        e.credentialAsset.toBase58() === "11111111111111111111111111111111"),
   ).length;
+  const coursesCompleted = credentialCoursesCompleted + finalizedWithoutCredential;
 
-  // Completed enrollments whose accounts can be closed to reclaim rent
+  // Finalized enrollments that can collect credential + close
   const completedEnrollments = allCourses.flatMap((c) => {
     if (!c.courseId) return [];
     const e = enrollments.find((e) => e.courseId === c.courseId);
-    if (!e || (e.progressPct < 100 && e.completedAt === null)) return [];
-    return [{ courseId: c.courseId, title: c.title }];
+    if (!e) return [];
+    const isFinalized = e.progressPct >= 100 || e.completedAt !== null;
+    if (!isFinalized) return [];
+    return [{ courseId: c.courseId, title: c.title, isFinalized }];
   });
 
   // Load user data from API
@@ -376,7 +386,7 @@ export default function DashboardPage() {
                     </span>
                     <span className="text-muted-foreground/50">·</span>
                     <span className="text-xs text-muted-foreground">
-                      Best: <span className="font-medium text-foreground">{stats.streak.longestStreak}</span>
+                      {t("best")}: <span className="font-medium text-foreground">{stats.streak.longestStreak}</span>
                     </span>
                   </div>
                 )}
@@ -432,11 +442,11 @@ export default function DashboardPage() {
                   <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <span className="h-4 w-8 rounded-md bg-orange-500" />
-                      Active day
+                      {t("activeDay")}
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="h-4 w-8 rounded-md bg-muted/60 ring-2 ring-orange-500 ring-offset-1 ring-offset-background" />
-                      Today
+                      {t("today")}
                     </span>
                   </div>
                 </>
@@ -464,7 +474,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <Button className="mt-4 w-full" size="sm">
-                Start Challenge
+                {t("startChallenge")}
               </Button>
             </CardContent>
           </Card>
@@ -531,7 +541,7 @@ export default function DashboardPage() {
                 </div>
               ) : activity.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No activity yet. Start a course to earn XP!
+                  {t("noActivityYet")}
                 </p>
               ) : (
                 activity.map((tx) => (

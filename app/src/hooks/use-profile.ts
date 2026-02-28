@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type {
   UserProfile,
   UserStats,
-  Enrollment,
   ProfileUpdateData,
 } from "@/types/user";
 
 interface ProfileData {
   profile: UserProfile | null;
   stats: UserStats | null;
-  completedCourses: Enrollment[];
   loading: boolean;
   error: string | null;
 }
@@ -20,7 +18,6 @@ export function useProfile(username: string | null): ProfileData {
   const [data, setData] = useState<ProfileData>({
     profile: null,
     stats: null,
-    completedCourses: [],
     loading: true,
     error: null,
   });
@@ -48,7 +45,6 @@ export function useProfile(username: string | null): ProfileData {
         setData({
           profile: json.profile,
           stats: json.stats,
-          completedCourses: json.completedCourses ?? [],
           loading: false,
           error: null,
         });
@@ -58,7 +54,6 @@ export function useProfile(username: string | null): ProfileData {
         setData({
           profile: null,
           stats: null,
-          completedCourses: [],
           loading: false,
           error: err.message,
         });

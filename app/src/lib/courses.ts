@@ -115,7 +115,6 @@ function sanityCourseToFull(c: Record<string, unknown>): Course {
       name: track?.name as string || "",
       slug: track?.slug as string || "",
       description: "",
-      icon: track?.icon as string || "",
       color: track?.color as string || "#888",
       trackId: track?.trackId as number | undefined,
       collectionAddress: track?.collectionAddress as string | undefined,
@@ -237,7 +236,6 @@ export async function getTracks(): Promise<Track[]> {
       name: t.name as string || "",
       slug: t.slug as string || "",
       description: t.description as string || "",
-      icon: t.icon as string || "",
       color: t.color as string || "#888",
       trackId: t.trackId as number | undefined,
       collectionAddress: t.collectionAddress as string | undefined,
@@ -245,6 +243,32 @@ export async function getTracks(): Promise<Track[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * Lightweight courseId/slug → title map. Sanity-only, no on-chain RPC.
+ * Safe to call from server components without blocking on RPC.
+ */
+export async function getCourseTitleMap(): Promise<Record<string, string>> {
+  const map: Record<string, string> = {};
+  if (!hasSanity) {
+    for (const c of COURSE_CARDS) {
+      if (c.courseId) map[c.courseId] = c.title;
+      map[c.slug] = c.title;
+    }
+    return map;
+  }
+  try {
+    const results: { courseId?: string; slug?: string; title?: string }[] =
+      await sanityClient.fetch(
+        `*[_type == "course"]{ "courseId": courseId.current, "slug": courseId.current, title }`,
+      );
+    for (const c of results) {
+      if (c.courseId && c.title) map[c.courseId] = c.title;
+      if (c.slug && c.title) map[c.slug] = c.title;
+    }
+  } catch { /* fallback to empty */ }
+  return map;
 }
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {

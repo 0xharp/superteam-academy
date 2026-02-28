@@ -28,7 +28,6 @@ import {
   User,
   Rocket,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -114,17 +113,7 @@ const LEARNING_PATHS = [
   },
 ];
 
-/* ---------- Track icon lookup ---------- */
-const TRACK_ICON_MAP: Record<string, LucideIcon> = {
-  "code": Code,
-  "layers": Layers,
-  "book-open": BookOpen,
-  "shield": Shield,
-  "users": Users,
-  "rocket": Rocket,
-  "trophy": Trophy,
-  "graduation-cap": GraduationCap,
-};
+/* ---------- (Track icons removed — using BookOpen for all tracks) ---------- */
 
 /* ---------- How it works steps ---------- */
 const HOW_IT_WORKS = [
@@ -191,11 +180,10 @@ export default function LandingView({ courseCards, activeTracks }: LandingViewPr
       });
       return { label: t("pathContinue"), href: `/courses/${next?.slug ?? ""}` };
     }
-    return { label: t("pathStart"), href: `/courses/${courses[0]?.slug ?? ""}` };
+    return { label: t("pathStart"), href: `/courses?track=${track.slug}` };
   }
 
   const showDynamicTracks = activeTracks.length > 0;
-  const showProgressBars = isLoggedIn && enrollments.length > 0;
 
   return (
     <div className="flex flex-col">
@@ -422,7 +410,7 @@ export default function LandingView({ courseCards, activeTracks }: LandingViewPr
             /* Dynamic tracks from Sanity */
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {activeTracks.map((track, idx) => {
-                const TrackIcon = TRACK_ICON_MAP[track.icon] ?? BookOpen;
+                const TrackIcon = BookOpen;
                 const courses = getTrackCourses(track);
                 const totalXP = courses.reduce((sum, c) => sum + c.totalXP, 0);
                 const stages = courses.slice(0, 4).map((c) => c.title);
@@ -459,16 +447,14 @@ export default function LandingView({ courseCards, activeTracks }: LandingViewPr
                           </div>
                         </div>
 
-                        {/* Per-user progress bar */}
-                        {showProgressBars && progress > 0 && (
-                          <div className="mt-4">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                              <span>Progress</span>
-                              <span>{Math.round(progress)}%</span>
-                            </div>
-                            <Progress value={progress} className="h-1.5" />
+                        {/* Always show progress bar (0% if not enrolled) */}
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>Progress</span>
+                            <span>{Math.round(progress)}%</span>
                           </div>
-                        )}
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
 
                         {/* Stage progression */}
                         {stages.length > 0 && (

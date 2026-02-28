@@ -44,3 +44,4 @@ next-env.d.ts
 
 # icons zone identifiers
 *:Zone.Identifier
+*Zone.Identifier

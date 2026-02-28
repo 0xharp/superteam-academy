@@ -154,8 +154,21 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
         toast.success(`+${data.xpEarned ?? 0} ${tc("xp")} earned!`);
         if (data.finalized) {
           toast.success("Course Complete! 🎓", {
-            description: "You've completed all lessons.",
-            duration: 8000,
+            description: (
+              <div className="space-y-1">
+                <p>
+                  Go to the{" "}
+                  <a href={`/courses/${slug}`} className="underline font-medium">
+                    course page
+                  </a>{" "}
+                  to collect your credential NFT and reclaim rent.
+                </p>
+                <p className="text-xs opacity-70">
+                  If the collect button doesn&apos;t show up, refresh the page after a few seconds — RPC indexing can lag.
+                </p>
+              </div>
+            ),
+            duration: 12000,
           });
         }
       }

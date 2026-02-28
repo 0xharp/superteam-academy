@@ -25,10 +25,15 @@ export interface Credential {
   id: string;
   trackId: number;
   trackName: string;
-  level: "bronze" | "silver" | "gold";
+  level: number;
   issuedAt: string;
   walletAddress: string;
   mintAddress?: string;
+  coursesCompleted?: number;
+  totalXp?: number;
+  completedCourseIds?: string[];
+  imageUrl?: string;
+  explorerUrl?: string;
 }
 
 export interface LearningProgressService {
@@ -84,6 +89,10 @@ export interface CredentialService {
     walletAddress: string,
     trackId: number,
   ): Promise<Credential | null>;
+  collectCredential(params: {
+    courseId: string;
+    learnerWallet: string;
+  }): Promise<CredentialIssuanceResult>;
 }
 
 export interface ProfileService {
@@ -95,7 +104,6 @@ export interface ProfileService {
     excludeUserId?: string,
   ): Promise<boolean>;
   getProfileStats(userId: string): Promise<UserStats | null>;
-  getCompletedCourses(userId: string): Promise<Enrollment[]>;
   /** Seed profile + user_stats rows on first login. No-op if already exists. */
   ensureProfile(user: {
     id: string;
@@ -192,5 +200,39 @@ export interface OnChainProgressService {
     coursesCompleted: number;
     totalXp: number;
   }): Promise<CredentialIssuanceResult>;
+}
+
+// ---------------------------------------------------------------------------
+// Track Services
+// ---------------------------------------------------------------------------
+
+import type { Track, CourseCardData } from "@/types/course";
+
+export interface TrackService {
+  getTracks(): Promise<Track[]>;
+  getTrackBySlug(slug: string): Promise<Track | null>;
+  getTrackCourses(trackSlug: string): Promise<CourseCardData[]>;
+  getTrackProgress(trackSlug: string, enrollments: Enrollment[]): number;
+}
+
+export interface TrackImageService {
+  getImageUrl(trackSlug: string): string;
+  uploadImage(trackSlug: string, file: File): Promise<string>;
+}
+
+export interface TrackAdminService {
+  createTrack(data: {
+    name: string;
+    slug: string;
+    description: string;
+    color: string;
+    trackId: number;
+  }): Promise<Track>;
+  updateTrack(slug: string, data: Partial<Track>): Promise<Track>;
+  createCollection(trackSlug: string): Promise<{ collectionAddress: string }>;
+  uploadCredentialImage(
+    trackSlug: string,
+    file: File,
+  ): Promise<{ imageUrl: string }>;
 }
 

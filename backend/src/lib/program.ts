@@ -9,9 +9,7 @@ export const PROGRAM_ID = new PublicKey(
 export const XP_MINT = new PublicKey(
   "F1PbQKRkn3UXnhCJErDSAtNmiScKPdMpwJxLLR7F3JQM",
 );
-export const TRACK_COLLECTION = new PublicKey(
-  "GyTUPBnidX3fWPwAJq7VpQRx5tMhQe3TXk5hbRo8wZS7",
-);
+// TRACK_COLLECTION removed — now resolved dynamically per track via lib/tracks.ts
 export const MPL_CORE_PROGRAM_ID = new PublicKey(
   "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d",
 );

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import {
-  Keypair,
   PublicKey,
   SendTransactionError,
   SystemProgram,
@@ -10,15 +9,25 @@ import { program, backendSigner, MPL_CORE_PROGRAM_ID } from "../lib/program.js";
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getTrackCollection } from "../lib/tracks.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { IssueCredentialRequest } from "../types.js";
+
+interface UpgradeCredentialRequest {
+  courseId: string;
+  learnerWallet: string;
+  credentialAsset: string;
+  credentialName: string;
+  metadataUri: string;
+  coursesCompleted: number;
+  totalXp: number;
+}
 
 const app = new Hono();
 
 app.post("/", authMiddleware, async (c) => {
-  const body = await c.req.json<IssueCredentialRequest>();
+  const body = await c.req.json<UpgradeCredentialRequest>();
   const {
     courseId,
     learnerWallet,
+    credentialAsset,
     credentialName,
     metadataUri,
     coursesCompleted,
@@ -28,6 +37,7 @@ app.post("/", authMiddleware, async (c) => {
   if (
     !courseId ||
     !learnerWallet ||
+    !credentialAsset ||
     !credentialName ||
     !metadataUri ||
     coursesCompleted == null ||
@@ -37,12 +47,11 @@ app.post("/", authMiddleware, async (c) => {
   }
 
   const learner = new PublicKey(learnerWallet);
-  const assetKeypair = Keypair.generate();
+  const asset = new PublicKey(credentialAsset);
   const [configPDA] = getConfigPDA();
   const [coursePDA] = getCoursePDA(courseId);
   const [enrollmentPDA] = getEnrollmentPDA(courseId, learner);
 
-  // Resolve track collection dynamically from course account
   let trackCollection;
   try {
     const courseAccount = await program.account.course.fetch(coursePDA);
@@ -58,7 +67,7 @@ app.post("/", authMiddleware, async (c) => {
   let signature: string;
   try {
     signature = await program.methods
-      .issueCredential(
+      .upgradeCredential(
         credentialName,
         metadataUri,
         coursesCompleted,
@@ -69,14 +78,14 @@ app.post("/", authMiddleware, async (c) => {
         course: coursePDA,
         enrollment: enrollmentPDA,
         learner,
-        credentialAsset: assetKeypair.publicKey,
+        credentialAsset: asset,
         trackCollection,
         payer: backendSigner.publicKey,
         backendSigner: backendSigner.publicKey,
         mplCoreProgram: MPL_CORE_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .signers([backendSigner, assetKeypair])
+      .signers([backendSigner])
       .rpc();
   } catch (err) {
     if (err instanceof SendTransactionError) {
@@ -90,7 +99,7 @@ app.post("/", authMiddleware, async (c) => {
   return c.json({
     success: true,
     signature,
-    credentialAsset: assetKeypair.publicKey.toBase58(),
+    credentialAsset: asset.toBase58(),
   });
 });
 

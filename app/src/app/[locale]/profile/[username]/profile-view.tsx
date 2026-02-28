@@ -6,10 +6,12 @@ import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { calculateLevel } from "@/types/gamification";
 import type { Achievement } from "@/types/gamification";
-import type { UserProfile, UserStats, Enrollment } from "@/types/user";
-import type { Credential, SkillScore } from "@/services/interfaces";
+import type { UserProfile, UserStats } from "@/types/user";
+import type { SkillScore } from "@/services/interfaces";
+import { useOnChainProgress } from "@/hooks/use-onchain-progress";
 import dynamic from "next/dynamic";
 
 const RechartsRadar = dynamic(
@@ -43,6 +45,7 @@ import {
   BookOpen,
   ExternalLink,
   Gem,
+  GraduationCap,
   Github,
   Share2,
   Check,
@@ -82,7 +85,8 @@ function deriveAchievements(flags: number[]): { name: string; unlocked: boolean;
 interface ProfileViewProps {
   profile: UserProfile;
   stats: UserStats | null;
-  completedCourses: Enrollment[];
+  courseMap: Record<string, string>;
+  trackMap: Record<number, string>;
   skills: SkillScore[];
   isOwner: boolean;
 }
@@ -145,7 +149,8 @@ function ShareButton({ username }: { username: string }) {
 export default function ProfileView({
   profile,
   stats,
-  completedCourses,
+  courseMap,
+  trackMap,
   skills,
   isOwner,
 }: ProfileViewProps) {
@@ -160,16 +165,11 @@ export default function ProfileView({
     [stats?.achievementFlags],
   );
 
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  useEffect(() => {
-    if (!profile.walletAddress) return;
-    fetch(`/api/gamification?type=achievements`)
-      .then((res) => res.json())
-      .catch(() => []);
-    // Fetch on-chain credentials via credentials service
-    fetch(`/api/leaderboard?wallet=${profile.walletAddress}`)
-      .catch(() => {});
-  }, [profile.walletAddress]);
+  const {
+    credentials,
+    credentialCoursesCompleted,
+    loading: credentialsLoading,
+  } = useOnChainProgress(profile.walletAddress);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -261,7 +261,7 @@ export default function ProfileView({
                 {tc("level")} {levelInfo.level}
               </p>
               <p className="text-xs text-muted-foreground">
-                {Math.round(levelInfo.progress * 100)}%
+                {Math.round(levelInfo.progress * 100)}% {t("toNextLevel")}
               </p>
             </div>
             <div className="rounded-lg border border-border p-3 text-center">
@@ -271,9 +271,13 @@ export default function ProfileView({
               </p>
             </div>
             <div className="rounded-lg border border-border p-3 text-center">
-              <p className="text-2xl font-bold">
-                {stats?.coursesCompleted ?? 0}
-              </p>
+              {credentialsLoading ? (
+                <Skeleton className="mx-auto h-8 w-8 mb-1" />
+              ) : (
+                <p className="text-2xl font-bold">
+                  {credentialCoursesCompleted}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">{tc("completed")}</p>
             </div>
           </div>
@@ -318,7 +322,7 @@ export default function ProfileView({
             </CardContent>
           </Card>
 
-          {/* On-Chain Credentials */}
+          {/* On-Chain Credentials & Completed Courses */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -327,92 +331,120 @@ export default function ProfileView({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {credentials.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {profile.walletAddress ? t("noCredentials") : t("connectWalletForCredentials") ?? t("noCredentials")}
-                </p>
-              ) : (
+              {credentialsLoading ? (
                 <div className="space-y-3">
-                  {credentials.map((cred) => (
-                    <div
-                      key={cred.id}
-                      className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-4"
-                    >
+                  {[1, 2].map((i) => (
+                    <div key={i} className="rounded-lg border border-border p-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <Gem className="h-5 w-5 text-primary" />
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
                         </div>
-                        <div>
-                          <p className="font-medium">{cred.trackName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {cred.level} &middot; {formatDate(cred.issuedAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <Shield className="h-3 w-3" />
-                          {t("verified")}
-                        </Badge>
-                        {cred.mintAddress && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1 text-xs"
-                            asChild
-                          >
-                            <a
-                              href={`https://explorer.solana.com/address/${cred.mintAddress}?cluster=devnet`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              {t("viewOnExplorer")}
-                            </a>
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Completed Courses */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                {t("completedCourses")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {completedCourses.length === 0 ? (
+              ) : credentials.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  {t("noCourses")}
+                  {profile.walletAddress ? t("noCredentials") : t("connectWalletForCredentials") ?? t("noCredentials")}
                 </p>
               ) : (
-                <div className="space-y-3">
-                  {completedCourses.map((enrollment) => (
-                    <div
-                      key={enrollment.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-4"
-                    >
-                      <div>
-                        <p className="font-medium">{enrollment.courseId}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {tc("completed")}{" "}
-                          {enrollment.completedAt
-                            ? formatDate(enrollment.completedAt)
-                            : ""}
-                        </p>
+                <div className="space-y-4">
+                  {credentials.map((cred) => {
+                    const resolvedTrackName = trackMap[cred.trackId] ?? cred.trackName;
+                    const courseEntries = (cred.completedCourseIds ?? [])
+                      .map((id) => ({ id, title: courseMap[id] }))
+                      .filter((e) => e.title);
+                    return (
+                      <div
+                        key={cred.id}
+                        className="rounded-lg border border-primary/20 bg-primary/5 p-5"
+                      >
+                        <div className="flex gap-4">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={cred.imageUrl || "/images/credentials/sample.png"}
+                            alt={resolvedTrackName}
+                            width={120}
+                            height={120}
+                            className="h-[120px] w-[120px] shrink-0 rounded-lg object-cover"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-lg font-semibold">{resolvedTrackName}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  {cred.level > 0 && (
+                                    <>
+                                      <span>{tc("level")} {cred.level}</span>
+                                      <span>&middot;</span>
+                                    </>
+                                  )}
+                                  {cred.coursesCompleted != null && (
+                                    <>
+                                      <span>{cred.coursesCompleted} {cred.coursesCompleted === 1 ? "course" : "courses"}</span>
+                                      <span>&middot;</span>
+                                    </>
+                                  )}
+                                  {cred.totalXp != null && (
+                                    <>
+                                      <span>{cred.totalXp.toLocaleString()} XP</span>
+                                      <span>&middot;</span>
+                                    </>
+                                  )}
+                                  <Badge variant="secondary" className="gap-1 text-xs">
+                                    <Shield className="h-3 w-3" />
+                                    {t("verified")}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Link href={`/certificates/${cred.id}`}>
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                                  <GraduationCap className="h-3.5 w-3.5" />
+                                  {t("viewCertificate")}
+                                </Button>
+                              </Link>
+                              {cred.explorerUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 text-xs"
+                                  asChild
+                                >
+                                  <a
+                                    href={cred.explorerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    {t("viewOnExplorer")}
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {courseEntries.length > 0 && (
+                          <div className="mt-4">
+                            <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              {t("coursesCompletedLabel")}
+                            </p>
+                            <div className="space-y-1 rounded-md border border-border/50 bg-background/50 px-3 py-2">
+                              {courseEntries.map((entry) => (
+                                <Link key={entry.id} href={`/courses/${entry.id}`} className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-primary transition-colors">
+                                  <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                                  {entry.title}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <Badge variant="secondary">
-                        {Math.round(enrollment.progressPct)}%
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

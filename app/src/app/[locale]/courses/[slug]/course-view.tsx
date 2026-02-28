@@ -8,8 +8,10 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useSession } from "next-auth/react";
 import { SignInModal } from "@/components/auth/sign-in-modal";
 import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useOnChainProgress } from "@/hooks/use-onchain-progress";
 import { Button } from "@/components/ui/button";
+import { CredentialModal, type CredentialModalData } from "@/components/credential-modal";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -33,8 +35,10 @@ import {
   Wallet,
   LogIn,
   X,
+  GraduationCap,
 } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 export default function CourseView({ course, slug, preview = false }: { course: Course; slug: string; preview?: boolean }) {
   const t = useTranslations("courses");
@@ -60,7 +64,17 @@ export default function CourseView({ course, slug, preview = false }: { course: 
     // Only run when session/provider changes, not on every wallet state change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user, sessionProvider]);
+  // Check if this course was already completed via credential completedCourseIds
+  const { credentials } = useOnChainProgress(walletAddress);
+  const alreadyCompleted = useMemo(() => {
+    if (!course.courseId || !course.track.trackId) return false;
+    const trackCred = credentials.find((c) => c.trackId === course.track.trackId);
+    return !!trackCred?.completedCourseIds?.includes(course.courseId);
+  }, [credentials, course.courseId, course.track.trackId]);
+
   const [signInOpen, setSignInOpen] = useState(false);
+  const [credentialModal, setCredentialModal] = useState<CredentialModalData | null>(null);
+  const [collecting, setCollecting] = useState(false);
   const {
     enroll,
     closeEnrollment,
@@ -70,6 +84,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
     error: enrollError,
     enrolled,
     checking,
+    enrollment,
     progress,
     isLessonComplete,
   } = useEnrollment(course.courseId, course.totalLessons, course.prerequisiteCourseId);
@@ -77,6 +92,48 @@ export default function CourseView({ course, slug, preview = false }: { course: 
   useEffect(() => {
     trackEvent(ANALYTICS_EVENTS.COURSE_VIEW, { slug });
   }, [slug]);
+
+  const isFinalized = !!enrollment?.completedAt;
+  const hasCredential = !!enrollment?.credentialAsset &&
+    enrollment.credentialAsset.toBase58() !== "11111111111111111111111111111111";
+
+  const handleCollectCredential = useCallback(async () => {
+    if (!course.courseId) return;
+    setCollecting(true);
+    try {
+      const res = await fetch("/api/credentials/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: course.courseId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || "Credential collection failed");
+      }
+      const data = await res.json();
+      setCredentialModal({
+        credentialAsset: data.credentialAsset,
+        signature: data.signature,
+        trackName: data.trackName,
+        level: data.level,
+        coursesCompleted: data.coursesCompleted,
+        totalXp: data.totalXp,
+        isUpgrade: data.isUpgrade,
+        imageUrl: data.imageUrl,
+      });
+      // Auto-trigger close enrollment while showing celebration modal
+      closeEnrollment(course.courseId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to collect credential";
+      toast.error(message);
+    } finally {
+      setCollecting(false);
+    }
+  }, [course.courseId, closeEnrollment]);
+
+  const handleCredentialModalClose = useCallback(() => {
+    setCredentialModal(null);
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -231,34 +288,46 @@ export default function CourseView({ course, slug, preview = false }: { course: 
 
               {preview ? (
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-center">
-                  <p className="text-sm font-medium text-primary">Course Preview</p>
+                  <p className="text-sm font-medium text-primary">{t("coursePreview")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    This is a preview. Once approved, this course will be visible in the catalog and learners can enroll.
+                    {t("coursePreviewDescription")}
                   </p>
                 </div>
               ) : course.submissionStatus === SUBMISSION_STATUS.DEACTIVATED ? (
                 <div className="rounded-lg border border-muted-foreground/30 bg-muted/30 p-4 text-center">
-                  <p className="text-sm font-medium text-muted-foreground">Course Deactivated</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("courseDeactivated")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    This course has been deactivated. New enrollments are closed, but enrolled learners can still complete it.
+                    {t("courseDeactivatedDescription")}
                   </p>
                 </div>
               ) : !course.published && course.submissionStatus !== SUBMISSION_STATUS.APPROVED ? (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-center">
                   <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                     {course.submissionStatus === SUBMISSION_STATUS.REJECTED
-                      ? "Course Needs Revision"
-                      : "Pending Approval"}
+                      ? t("courseNeedsRevision")
+                      : t("pendingApproval")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {course.submissionStatus === SUBMISSION_STATUS.REJECTED
-                      ? "This course has been sent back for revision by an admin."
-                      : "This course has been submitted and is awaiting admin approval. Enrollment will be available once approved."}
+                      ? t("courseNeedsRevisionDescription")
+                      : t("pendingApprovalDescription")}
                   </p>
+                </div>
+              ) : alreadyCompleted && !enrolled ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 text-center">
+                    <CheckCircle2 className="mx-auto h-6 w-6 text-green-500 mb-2" />
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                      {t("alreadyCompleted")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("alreadyCompletedDescription")}
+                    </p>
+                  </div>
                 </div>
               ) : checking ? (
                 <Button className="w-full gap-2" size="lg" variant="secondary" disabled>
-                  Checking...
+                  {t("checking")}
                 </Button>
               ) : !session?.user ? (
                 <>
@@ -268,7 +337,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                     onClick={() => setSignInOpen(true)}
                   >
                     <LogIn className="h-4 w-4" />
-                    Sign In to Enroll
+                    {t("signInToEnroll")}
                   </Button>
                   <SignInModal open={signInOpen} onOpenChange={setSignInOpen} />
                 </>
@@ -287,7 +356,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                     disabled={linkingWallet}
                   >
                     <Wallet className="h-4 w-4" />
-                    {linkingWallet ? "Connecting wallet..." : enrolled ? "Connect Wallet to Manage" : "Connect Wallet to Enroll"}
+                    {linkingWallet ? t("connectingWallet") : enrolled ? t("connectWalletToManage") : t("connectWalletToEnroll")}
                   </Button>
                 </div>
               ) : !publicKey ? (
@@ -298,13 +367,33 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                   disabled={linkingWallet}
                 >
                   <Wallet className="h-4 w-4" />
-                  {linkingWallet ? "Linking wallet..." : "Link Wallet to Enroll"}
+                  {linkingWallet ? t("linkingWallet") : t("linkWalletToEnroll")}
                 </Button>
+              ) : enrolled && isFinalized ? (
+                <div className="space-y-2">
+                  <Button className="w-full gap-2" size="lg" variant="secondary" disabled>
+                    <CheckCircle2 className="h-4 w-4" />
+                    {t("enrolledCompleted")}
+                  </Button>
+                  <Button
+                    className="w-full gap-2 border-2 border-gold bg-gold/15 text-foreground hover:bg-gold/25"
+                    size="lg"
+                    disabled={collecting || !course.courseId}
+                    onClick={handleCollectCredential}
+                  >
+                    <GraduationCap className="h-4 w-4" />
+                    {collecting
+                      ? t("collecting")
+                      : hasCredential
+                        ? t("upgradeCredentialAndClose")
+                        : t("collectCredentialAndClose")}
+                  </Button>
+                </div>
               ) : enrolled ? (
                 <div className="space-y-2">
                   <Button className="w-full gap-2" size="lg" variant="secondary" disabled>
                     <CheckCircle2 className="h-4 w-4" />
-                    {t("enrolled") || "Enrolled"}
+                    {t("enrolled")}
                   </Button>
                   <Button
                     className="w-full gap-2"
@@ -316,7 +405,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                     }}
                   >
                     <X className="h-3 w-3" />
-                    {closing ? "Closing..." : "Close Enrollment"}
+                    {closing ? t("closing") : t("closeEnrollment")}
                   </Button>
                 </div>
               ) : (
@@ -329,7 +418,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                   }}
                 >
                   <Play className="h-4 w-4" />
-                  {enrolling ? "Enrolling..." : t("enrollNow")}
+                  {enrolling ? t("enrolling") : t("enrollNow")}
                 </Button>
               )}
               {enrollError && (
@@ -398,6 +487,12 @@ export default function CourseView({ course, slug, preview = false }: { course: 
           </Card>
         </div>
       </div>
+
+      <CredentialModal
+        open={!!credentialModal}
+        onClose={handleCredentialModalClose}
+        data={credentialModal}
+      />
     </div>
   );
 }

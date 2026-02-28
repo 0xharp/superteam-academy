@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -14,8 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useBulkEnrollments } from "@/hooks/use-bulk-enrollments";
+import { calculateTrackProgress } from "@/services/tracks";
 import type { CourseCardData, Track } from "@/types/course";
-import { Search, BookOpen, Clock, Star, Filter } from "lucide-react";
+import { Search, BookOpen, Clock, Star, Filter, ArrowRight, Layers } from "lucide-react";
 import Image from "next/image";
 
 interface CoursesViewProps {
@@ -26,9 +30,29 @@ interface CoursesViewProps {
 export default function CoursesView({ courses, tracks }: CoursesViewProps) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
+  const searchParams = useSearchParams();
+  const coursesGridRef = useRef<HTMLDivElement>(null);
+
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("all");
   const [track, setTrack] = useState("all");
+
+  const { enrollments } = useBulkEnrollments(courses);
+
+  // Auto-select track from URL query param
+  useEffect(() => {
+    const trackParam = searchParams.get("track");
+    if (trackParam) {
+      const matchedTrack = tracks.find((tr) => tr.slug === trackParam);
+      if (matchedTrack) {
+        setTrack(matchedTrack.name);
+        // Scroll to courses grid after a brief delay
+        setTimeout(() => {
+          coursesGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
+    }
+  }, [searchParams, tracks]);
 
   const filtered = useMemo(() => {
     return courses.filter((c) => {
@@ -50,8 +74,76 @@ export default function CoursesView({ courses, tracks }: CoursesViewProps) {
         <p className="mt-2 text-muted-foreground">{t("subtitle")}</p>
       </div>
 
+      {/* Learning Paths Section */}
+      {tracks.length > 0 && (
+        <div className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <Layers className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-bold">{t("learningPaths")}</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tracks.map((tr) => {
+              const trackCourses = courses.filter((c) => c.trackName === tr.name);
+              const totalXP = trackCourses.reduce((sum, c) => sum + c.totalXP + c.bonusXP, 0);
+              const progress = calculateTrackProgress(
+                tr.name,
+                courses,
+                enrollments,
+              );
+
+              return (
+                <button
+                  key={tr.id}
+                  onClick={() => {
+                    setTrack(tr.name);
+                    coursesGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="text-left"
+                >
+                  <Card className={`group h-full transition-all hover:border-primary/50 hover:shadow-md ${track === tr.name ? "border-primary/50 shadow-md" : ""}`}>
+                    <div
+                      className="h-1 w-full"
+                      style={{ background: `linear-gradient(to right, ${tr.color}, ${tr.color}80)` }}
+                    />
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: `${tr.color}20` }}
+                        >
+                          <BookOpen className="h-5 w-5" style={{ color: tr.color }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold group-hover:text-primary transition-colors">{tr.name}</h3>
+                          {tr.description && (
+                            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{tr.description}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Always show progress bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span>{t("percentComplete", { percent: Math.round(progress) })}</span>
+                        </div>
+                        <Progress value={progress} className="h-1.5" />
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{t("courseCount", { count: trackCourses.length })}</span>
+                        <span>{totalXP.toLocaleString()} XP</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row">
+      <div ref={coursesGridRef} className="mb-8 flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -96,7 +188,7 @@ export default function CoursesView({ courses, tracks }: CoursesViewProps) {
               setTrack("all");
             }}
           >
-            Clear
+            {t("clear")}
           </Button>
         )}
       </div>

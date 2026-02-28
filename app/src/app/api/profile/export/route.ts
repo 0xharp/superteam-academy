@@ -7,17 +7,15 @@ export async function GET() {
   if (error) return error;
 
   const userId = session.user.id;
-  const [profile, stats, completedCourses] = await Promise.all([
+  const [profile, stats] = await Promise.all([
     profileService.getProfileById(userId),
     profileService.getProfileStats(userId),
-    profileService.getCompletedCourses(userId),
   ]);
 
   const exportData = {
     exportedAt: new Date().toISOString(),
     profile,
     stats,
-    completedCourses,
   };
 
   return new NextResponse(JSON.stringify(exportData, null, 2), {

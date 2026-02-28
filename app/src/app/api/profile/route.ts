@@ -26,9 +26,8 @@ export async function GET(request: NextRequest) {
   }
 
   const stats = await profileService.getProfileStats(profile.id);
-  const completedCourses = await profileService.getCompletedCourses(profile.id);
 
-  return NextResponse.json({ profile, stats, completedCourses });
+  return NextResponse.json({ profile, stats });
 }
 
 export async function PATCH(request: NextRequest) {

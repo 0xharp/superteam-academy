@@ -192,6 +192,22 @@ export default function AdminPage() {
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
   const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
 
+  // Track management state
+  interface AdminTrack {
+    _id: string;
+    name: string;
+    slug: string;
+    description: string;
+    color: string;
+    trackId: number;
+    collectionAddress?: string;
+    courseCount: number;
+  }
+  const [tracks, setTracks] = useState<AdminTrack[]>([]);
+  const [trackDialog, setTrackDialog] = useState<{ mode: "create" | "edit"; track?: AdminTrack } | null>(null);
+  const [trackForm, setTrackForm] = useState({ name: "", slug: "", description: "", color: "#D4A843", trackId: 0 });
+  const [trackLoading, setTrackLoading] = useState<string | null>(null);
+
   // ── Data Fetching ───────────────────────────────────────────────────────
 
   const fetchStats = useCallback(async () => {
@@ -229,11 +245,17 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchTracks = useCallback(async () => {
+    const res = await fetch("/api/admin/tracks");
+    if (res.ok) setTracks(await res.json());
+  }, []);
+
   useEffect(() => {
     fetchStats();
     fetchAnalytics();
     fetchCourses();
-  }, [fetchStats, fetchAnalytics, fetchCourses]);
+    fetchTracks();
+  }, [fetchStats, fetchAnalytics, fetchCourses, fetchTracks]);
 
   useEffect(() => {
     fetchUsers();
@@ -341,6 +363,7 @@ export default function AdminPage() {
           <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
           <TabsTrigger value="users">{t("userManagement")}</TabsTrigger>
           <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
+          <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
         </TabsList>
 
         {/* ── Overview / Analytics ──────────────────────────────────────── */}
@@ -725,7 +748,242 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Tracks ───────────────────────────────────────────────────── */}
+        <TabsContent value="tracks">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>{t("trackManagement")}</CardTitle>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const nextId = tracks.length > 0 ? Math.max(...tracks.map((t) => t.trackId)) + 1 : 1;
+                  setTrackForm({ name: "", slug: "", description: "", color: "#D4A843", trackId: nextId });
+                  setTrackDialog({ mode: "create" });
+                }}
+              >
+                {t("createTrack")}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("id")}</TableHead>
+                    <TableHead>{t("name")}</TableHead>
+                    <TableHead>{t("slug")}</TableHead>
+                    <TableHead>{t("courses")}</TableHead>
+                    <TableHead>{t("collection")}</TableHead>
+                    <TableHead>{t("actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tracks.map((track) => (
+                    <TableRow key={track._id}>
+                      <TableCell className="font-mono text-xs">{track.trackId}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: track.color }} />
+                          {track.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{track.slug}</TableCell>
+                      <TableCell>{track.courseCount}</TableCell>
+                      <TableCell>
+                        {track.collectionAddress ? (
+                          <div className="flex items-center gap-1">
+                            <Badge variant="default" className="gap-1 text-xs">
+                              <Check className="h-3 w-3" />
+                              {track.collectionAddress.slice(0, 8)}...
+                            </Badge>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(track.collectionAddress!);
+                                setCopiedWallet(`col-${track._id}`);
+                                setTimeout(() => setCopiedWallet(null), 1500);
+                              }}
+                              className="text-muted-foreground/50 hover:text-foreground transition-colors"
+                            >
+                              {copiedWallet === `col-${track._id}` ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs">{t("missing")}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setTrackForm({
+                                name: track.name,
+                                slug: track.slug,
+                                description: track.description,
+                                color: track.color,
+                                trackId: track.trackId,
+                              });
+                              setTrackDialog({ mode: "edit", track });
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          {!track.collectionAddress && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={trackLoading === `col-${track.slug}`}
+                              onClick={async () => {
+                                setTrackLoading(`col-${track.slug}`);
+                                try {
+                                  const res = await fetch(`/api/admin/tracks/${track.slug}/collection`, { method: "POST" });
+                                  const data = await res.json();
+                                  if (res.ok || data.collectionPublicKey) {
+                                    toast.success(`Collection created: ${data.collectionPublicKey || "OK"}`);
+                                    fetchTracks();
+                                  } else {
+                                    toast.error(data.error || "Failed");
+                                  }
+                                } catch {
+                                  toast.error("Failed to create collection");
+                                } finally {
+                                  setTrackLoading(null);
+                                }
+                              }}
+                            >
+                              {t("createCollection")}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {tracks.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        {t("noTracks")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* ── Track Create/Edit Dialog ────────────────────────────────── */}
+      <Dialog open={!!trackDialog} onOpenChange={(open) => !open && setTrackDialog(null)}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{trackDialog?.mode === "create" ? t("createTrack") : t("editTrack")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Name — full width */}
+            <div>
+              <label className="text-sm font-medium">{t("name")}</label>
+              <Input value={trackForm.name} onChange={(e) => setTrackForm({ ...trackForm, name: e.target.value, ...(trackDialog?.mode === "create" ? { slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") } : {}) })} />
+            </div>
+            {/* Slug + Color — side by side */}
+            <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
+              <div>
+                <label className="text-sm font-medium">{t("slug")}</label>
+                <Input value={trackForm.slug} onChange={(e) => trackDialog?.mode === "create" && setTrackForm({ ...trackForm, slug: e.target.value })} readOnly={trackDialog?.mode === "edit"} className={trackDialog?.mode === "edit" ? "opacity-60 cursor-not-allowed" : ""} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{t("color")}</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input type="color" value={trackForm.color} onChange={(e) => setTrackForm({ ...trackForm, color: e.target.value })} className="h-9 w-9 rounded cursor-pointer border border-border bg-transparent p-0.5" />
+                  <span className="text-xs text-muted-foreground font-mono">{trackForm.color}</span>
+                </div>
+              </div>
+            </div>
+            {/* Description + Image — side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">{t("description")}</label>
+                <Textarea value={trackForm.description} onChange={(e) => setTrackForm({ ...trackForm, description: e.target.value })} className="flex-1 min-h-[140px] resize-none" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">{t("credentialImage")}</label>
+                <div className="flex-1 rounded-lg border border-border flex items-center justify-center p-3">
+                  <img src="/images/credentials/sample.png" alt="Default credential" className="h-32 w-32 rounded-lg object-cover" />
+                </div>
+              </div>
+            </div>
+            {/* Note */}
+            <p className="text-xs text-muted-foreground">
+              {t("credentialImageNote")}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTrackDialog(null)}>{tc("cancel")}</Button>
+            <Button
+              disabled={trackLoading === "save"}
+              onClick={async () => {
+                setTrackLoading("save");
+                try {
+                  if (trackDialog?.mode === "create") {
+                    const res = await fetch("/api/admin/tracks", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: trackForm.name, slug: trackForm.slug, description: trackForm.description, color: trackForm.color }),
+                    });
+                    if (res.ok) {
+                      toast.success(t("trackCreated"));
+                      // Auto-create collection for the new track
+                      const slug = trackForm.slug;
+                      toast.info(t("creatingCollection"));
+                      try {
+                        const colRes = await fetch(`/api/admin/tracks/${slug}/collection`, { method: "POST" });
+                        const colData = await colRes.json();
+                        if (colRes.ok || colData.collectionPublicKey) {
+                          toast.success(`Collection created: ${colData.collectionPublicKey || "OK"}`);
+                        } else {
+                          toast.error(colData.error || "Collection creation failed");
+                        }
+                      } catch {
+                        toast.error("Collection creation failed");
+                      }
+                      fetchTracks();
+                      setTrackDialog(null);
+                    } else {
+                      const data = await res.json();
+                      toast.error(data.error || "Failed");
+                    }
+                  } else if (trackDialog?.track) {
+                    const res = await fetch(`/api/admin/tracks/${trackDialog.track.slug}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: trackForm.name, description: trackForm.description, color: trackForm.color }),
+                    });
+                    if (res.ok) {
+                      toast.success(t("trackUpdated"));
+                      fetchTracks();
+                      setTrackDialog(null);
+                    } else {
+                      toast.error("Update failed");
+                    }
+                  }
+                } catch {
+                  toast.error("Operation failed");
+                } finally {
+                  setTrackLoading(null);
+                }
+              }}
+            >
+              {trackDialog?.mode === "create" ? t("create") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Approve Dialog (with editable params) ─────────────────────── */}
       <Dialog open={!!approveDialog} onOpenChange={(open) => !open && setApproveDialog(null)}>
