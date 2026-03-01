@@ -135,13 +135,6 @@ export const course = defineType({
       validation: (r) => r.integer().min(1),
     }),
     defineField({
-      name: "trackId",
-      title: "Track ID (On-Chain)",
-      type: "number",
-      description: "Numeric track identifier — used as trackId in create_course.",
-      validation: (r) => r.required().integer().min(0),
-    }),
-    defineField({
       name: "trackLevel",
       title: "Track Level (On-Chain)",
       type: "number",

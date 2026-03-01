@@ -264,6 +264,39 @@ export async function POST(req: NextRequest) {
     ? Math.max(existingLevel, enrollmentData.trackLevel)
     : enrollmentData.trackLevel;
 
+  // For upgrades, find the courseId whose enrollment holds the credential_asset.
+  // The current course's enrollment may have credential_asset = None if the
+  // credential was originally issued on a different course in the same track.
+  let upgradeCourseId = courseId;
+  if (isUpgrade && !enrollmentData.credentialAsset) {
+    try {
+      const { program: prog } = await import("@/lib/solana/program");
+      const { PublicKey } = await import("@solana/web3.js");
+      const { getEnrollmentPDA: getEnrPDA } = await import("@/lib/solana/enrollments");
+
+      const allCourses = await prog.account.course.all();
+      const trackCourses = allCourses.filter(
+        (c) => (c.account.trackId as number) === enrollmentData.trackId,
+      );
+
+      const learner = new PublicKey(walletAddress);
+      for (const tc of trackCourses) {
+        const tcCourseId = tc.account.courseId as string;
+        if (tcCourseId === courseId) continue;
+        const enrPDA = getEnrPDA(tcCourseId, learner);
+        const enr = await prog.account.enrollment.fetchNullable(enrPDA);
+        if (!enr) continue;
+        const asset = enr.credentialAsset as { toBase58?: () => string } | null;
+        if (asset?.toBase58 && asset.toBase58() === existingCredentialAsset) {
+          upgradeCourseId = tcCourseId;
+          break;
+        }
+      }
+    } catch {
+      // Fall through — use original courseId
+    }
+  }
+
   // Fetch track name for metadata
   let trackName = `Track ${enrollmentData.trackId}`;
   try {
@@ -288,7 +321,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers,
       body: JSON.stringify({
-        courseId,
+        courseId: upgradeCourseId,
         learnerWallet: walletAddress,
         credentialAsset: existingCredentialAsset,
         credentialName,

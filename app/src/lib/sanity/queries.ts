@@ -3,7 +3,7 @@ const COURSE_ONCHAIN_FIELDS = `
   "courseId": courseId.current,
   xpPerLesson,
   lessonCount,
-  trackId,
+  "trackId": track->trackId,
   trackLevel,
   creator,
   creatorRewardXp,
