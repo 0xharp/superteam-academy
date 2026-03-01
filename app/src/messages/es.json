@@ -48,7 +48,11 @@
     "beginner": "Principiante",
     "intermediate": "Intermedio",
     "advanced": "Avanzado",
-    "challenge": "Desafio"
+    "challenge": "Desafio",
+    "status": "Estado",
+    "actions": "Acciones",
+    "active": "Activo",
+    "inactive": "Inactivo"
   },
   "landing": {
     "newCourse": "Nuevo Curso",
@@ -374,7 +378,13 @@
     "streakDays": "Racha de {count} dias",
     "dailyXPCap": "Limite diario de XP alcanzado",
     "freezeAvailable": "Congelamiento de racha disponible",
-    "freezeUsed": "Congelamiento de racha usado"
+    "freezeUsed": "Congelamiento de racha usado",
+    "claimAchievement": "Reclamar",
+    "achievementClaimed": "Logro reclamado!",
+    "eligible": "Elegible",
+    "locked": "Bloqueado",
+    "claiming": "Reclamando...",
+    "claimFailed": "Error al reclamar logro"
   },
   "community": {
     "title": "Comunidad",
@@ -501,7 +511,30 @@
     "featuredOrder": "Orden",
     "maxFeatured": "Maximo de 10 testimonios destacados alcanzado.",
     "newTestimonials": "Nuevos Testimonios",
-    "featuredTestimonials": "Testimonios Destacados"
+    "featuredTestimonials": "Testimonios Destacados",
+    "achievements": "Logros",
+    "createAchievementType": "Crear Tipo de Logro",
+    "achievementName": "Nombre",
+    "noAchievementTypes": "No se han creado tipos de logros aun.",
+    "dailyChallenges": "Desafios Diarios",
+    "addChallenge": "Agregar Desafio",
+    "editChallenge": "Editar Desafio",
+    "question": "Pregunta",
+    "options": "Opciones",
+    "category": "Categoria",
+    "addOption": "Agregar Opcion",
+    "correctOptionHint": "Selecciona el boton junto a la respuesta correcta.",
+    "noChallenges": "No hay desafios diarios aun. Agrega uno para empezar.",
+    "challengeCount": "{count} activos de {total} desafios en total",
+    "correct": "Correcto",
+    "achievementAutoClaimLabel": "Auto-reclamo:",
+    "achievementAutoClaimDesc": "Los usuarios obtienen estos al cumplir condiciones (rachas, completaciones) y los reclaman desde su panel.",
+    "achievementManualLabel": "Manual:",
+    "achievementManualDesc": "El admin otorga directamente via el boton Otorgar. No se verifican automaticamente.",
+    "achievementCreatedToast": "Logro creado on-chain. La tabla se actualizara automaticamente en ~15 segundos. Los logros auto-reclamables requieren cambios en achievement-checker.ts. Los logros manuales se pueden otorgar desde este panel.",
+    "recipientUsername": "Nombre de usuario",
+    "userNotFound": "Usuario no encontrado",
+    "noWalletLinked": "El usuario no tiene billetera vinculada"
   },
   "creator": {
     "title": "Panel del Creador",
@@ -535,6 +568,18 @@
     "interestWeb3": "dApps y Frontends",
     "interestPrograms": "Programas On-Chain",
     "loadingRecommendations": "Encontrando los mejores cursos para ti..."
+  },
+  "dailyChallenges": {
+    "title": "Desafio Diario",
+    "completed": "Completado",
+    "correct": "Correcto!",
+    "incorrect": "Incorrecto, intenta manana!",
+    "xpEarned": "ganado",
+    "alreadyCompleted": "Completado hoy!",
+    "submitAnswer": "Enviar Respuesta",
+    "submitting": "Enviando...",
+    "selectAnswer": "Selecciona una respuesta",
+    "linkWalletToSubmit": "Conecta una billetera para enviar desafios diarios y ganar XP."
   },
   "footer": {
     "description": "La plataforma de aprendizaje descentralizada para desarrolladores Solana.",

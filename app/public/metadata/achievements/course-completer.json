@@ -1,0 +1,14 @@
+{
+  "name": "Course Completer",
+  "symbol": "SACAD",
+  "description": "Awarded for completing your first course on Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Course Completer" },
+    { "trait_type": "Category", "value": "Progress" },
+    { "trait_type": "XP Reward", "value": "200" },
+    { "trait_type": "Rarity", "value": "Rare" }
+  ],
+  "properties": { "category": "achievement" }
+}

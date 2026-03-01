@@ -1,0 +1,14 @@
+{
+  "name": "Anchor Expert",
+  "symbol": "SACAD",
+  "description": "Awarded for completing all Anchor courses on Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Anchor Expert" },
+    { "trait_type": "Category", "value": "Skill" },
+    { "trait_type": "XP Reward", "value": "500" },
+    { "trait_type": "Rarity", "value": "Epic" }
+  ],
+  "properties": { "category": "achievement" }
+}

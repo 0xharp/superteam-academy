@@ -271,6 +271,26 @@ export async function getCourseTitleMap(): Promise<Record<string, string>> {
   return map;
 }
 
+/**
+ * Returns a Set of on-chain courseIds for courses tagged with a given tag.
+ */
+export async function getTaggedCourseIds(tag: string): Promise<Set<string>> {
+  if (!hasSanity) {
+    // Fallback: no tags on static cards, return empty
+    return new Set();
+  }
+  try {
+    const query = `*[_type == "course" && $tag in tags[]]{  "courseId": courseId.current }`;
+    const results: { courseId?: string }[] = await sanityClient.fetch(
+      query as never,
+      { tag } as never,
+    );
+    return new Set(results.map((r) => r.courseId).filter(Boolean) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
   if (!hasSanity) return getMockCourseBySlug(slug) || null;
   try {

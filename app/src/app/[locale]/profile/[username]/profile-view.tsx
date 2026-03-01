@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Achievement } from "@/types/gamification";
 import { usePlayerStats } from "@/hooks/use-player-stats";
 import { useCoursesCompleted } from "@/hooks/use-courses-completed";
 import { StatsBar } from "@/components/stats-bar";
@@ -59,29 +58,6 @@ function formatDate(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
-const ACHIEVEMENT_DEFINITIONS = [
-  { id: 0, name: "First Steps", icon: "footprints", category: "progress" as const, xpReward: 50 },
-  { id: 1, name: "Course Completer", icon: "graduation-cap", category: "progress" as const, xpReward: 200 },
-  { id: 2, name: "Speed Runner", icon: "zap", category: "progress" as const, xpReward: 500 },
-  { id: 3, name: "Week Warrior", icon: "flame", category: "streak" as const, xpReward: 100 },
-  { id: 4, name: "Monthly Master", icon: "calendar", category: "streak" as const, xpReward: 300 },
-  { id: 5, name: "Consistency King", icon: "crown", category: "streak" as const, xpReward: 1000 },
-  { id: 6, name: "Rust Rookie", icon: "code", category: "skill" as const, xpReward: 150 },
-  { id: 7, name: "Anchor Expert", icon: "anchor", category: "skill" as const, xpReward: 500 },
-  { id: 8, name: "Early Adopter", icon: "star", category: "special" as const, xpReward: 250 },
-  { id: 9, name: "Bug Hunter", icon: "bug", category: "special" as const, xpReward: 200 },
-  { id: 10, name: "Social Butterfly", icon: "users", category: "special" as const, xpReward: 100 },
-  { id: 11, name: "Challenge Champion", icon: "trophy", category: "progress" as const, xpReward: 400 },
-];
-
-function deriveAchievements(flags: number[]): { name: string; unlocked: boolean; icon: string }[] {
-  return ACHIEVEMENT_DEFINITIONS.map((def) => {
-    const wordIndex = Math.floor(def.id / 32);
-    const bitIndex = def.id % 32;
-    const unlocked = ((flags[wordIndex] ?? 0) & (1 << bitIndex)) !== 0;
-    return { name: def.name, unlocked, icon: def.icon };
-  });
-}
 
 interface ProfileViewProps {
   profile: UserProfile;
@@ -158,18 +134,29 @@ export default function ProfileView({
   const t = useTranslations("profile");
   const tc = useTranslations("common");
 
-  const playerStats = usePlayerStats(profile.walletAddress);
+  const walletAddress = profile.walletAddress ?? null;
+  const playerStats = usePlayerStats(walletAddress);
 
   const {
     coursesCompleted,
     credentials,
     loading: coursesLoading,
-  } = useCoursesCompleted(profile.walletAddress);
+  } = useCoursesCompleted(walletAddress);
 
-  const achievements = useMemo(
-    () => deriveAchievements(stats?.achievementFlags ?? [0, 0, 0, 0]),
-    [stats?.achievementFlags],
-  );
+  const [achievements, setAchievements] = useState<{ name: string; unlocked: boolean; icon: string }[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ type: "achievements" });
+    if (walletAddress) params.set("wallet", walletAddress);
+    fetch(`/api/gamification?${params}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((data: Array<{ name: string; unlocked: boolean; icon: string }>) => {
+        setAchievements(data.map((d) => ({ name: d.name, unlocked: d.unlocked, icon: d.icon })));
+      })
+      .catch(() => {})
+      .finally(() => setAchievementsLoading(false));
+  }, [walletAddress]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -252,7 +239,7 @@ export default function ProfileView({
           <div className="mt-6">
             <StatsBar
               xp={playerStats.xp}
-              streak={playerStats.streak?.currentStreak ?? 0}
+              streak={stats?.currentStreak ?? 0}
               coursesCompleted={coursesCompleted}
               loadingStats={playerStats.loading}
               loadingCourses={coursesLoading}
@@ -438,27 +425,39 @@ export default function ProfileView({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {achievements.map((ach) => (
-                <div
-                  key={ach.name}
-                  className={`flex items-center gap-2.5 rounded-lg border p-3 ${
-                    ach.unlocked
-                      ? "border-primary/30 bg-primary/5"
-                      : "border-border/50 opacity-50"
-                  }`}
-                >
+            {achievementsLoading ? (
+              <div className="grid grid-cols-2 gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : achievements.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {t("noAchievements") ?? "No achievements yet"}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {[...achievements].sort((a, b) => a.name.localeCompare(b.name)).map((ach) => (
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ach.unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                    key={ach.name}
+                    className={`flex items-center gap-2.5 rounded-lg border p-3 ${
+                      ach.unlocked
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-border/50 opacity-50"
+                    }`}
                   >
-                    <Trophy className="h-4 w-4" />
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ach.unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                    >
+                      <Trophy className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-medium leading-tight">
+                      {ach.name}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium leading-tight">
-                    {ach.name}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

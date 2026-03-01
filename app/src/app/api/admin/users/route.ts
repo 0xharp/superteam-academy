@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/auth-guard";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { getXPBalance } from "@/lib/solana/on-chain";
+import { PublicKey } from "@solana/web3.js";
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAdmin();
@@ -50,17 +52,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: [], total: 0, page, limit });
   }
 
-  // Fetch stats (XP, level, streak) and linked accounts in parallel
-  const [{ data: stats }, { data: accounts }] = await Promise.all([
+  // Fetch streak stats, linked accounts, and on-chain XP in parallel
+  const [{ data: stats }, { data: accounts }, ...xpBalances] = await Promise.all([
     db
       .from("user_stats")
-      .select("user_id, total_xp, level, current_streak")
+      .select("user_id, current_streak")
       .in("user_id", userIds),
     db
       .from("accounts")
       .select("user_id, provider")
       .in("user_id", userIds),
-  ]);
+    ...(users ?? []).map((u) =>
+      u.wallet_address
+        ? getXPBalance(new PublicKey(u.wallet_address)).catch(() => 0)
+        : Promise.resolve(0),
+    ),
+  ]) as [{ data: { user_id: string; current_streak: number }[] | null }, { data: { user_id: string; provider: string }[] | null }, ...number[]];
 
   const statsMap = new Map((stats ?? []).map((s) => [s.user_id, s]));
 
@@ -71,13 +78,15 @@ export async function GET(req: NextRequest) {
     providerMap.get(acc.user_id)!.add(acc.provider);
   }
 
-  const enriched = (users ?? []).map((u) => {
+  const enriched = (users ?? []).map((u, i) => {
     const s = statsMap.get(u.id);
     const providers = providerMap.get(u.id) ?? new Set();
+    const onChainXp = xpBalances[i] ?? 0;
+    const level = Math.floor(Math.sqrt(onChainXp / 100));
     return {
       ...u,
-      totalXp: s?.total_xp ?? 0,
-      level: s?.level ?? 0,
+      totalXp: onChainXp,
+      level,
       streak: s?.current_streak ?? 0,
       hasGoogle: providers.has("google"),
       hasGithub: providers.has("github"),

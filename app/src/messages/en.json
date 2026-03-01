@@ -48,7 +48,11 @@
     "beginner": "Beginner",
     "intermediate": "Intermediate",
     "advanced": "Advanced",
-    "challenge": "Challenge"
+    "challenge": "Challenge",
+    "status": "Status",
+    "actions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "landing": {
     "newCourse": "New Course",
@@ -374,7 +378,13 @@
     "streakDays": "{count} day streak",
     "dailyXPCap": "Daily XP cap reached",
     "freezeAvailable": "Streak freeze available",
-    "freezeUsed": "Streak freeze used"
+    "freezeUsed": "Streak freeze used",
+    "claimAchievement": "Claim",
+    "achievementClaimed": "Achievement claimed!",
+    "eligible": "Eligible",
+    "locked": "Locked",
+    "claiming": "Claiming...",
+    "claimFailed": "Failed to claim achievement"
   },
   "community": {
     "title": "Community",
@@ -501,7 +511,30 @@
     "featuredOrder": "Order",
     "maxFeatured": "Maximum of 10 featured testimonials reached.",
     "newTestimonials": "New Testimonials",
-    "featuredTestimonials": "Featured Testimonials"
+    "featuredTestimonials": "Featured Testimonials",
+    "achievements": "Achievements",
+    "createAchievementType": "Create Achievement Type",
+    "achievementName": "Name",
+    "noAchievementTypes": "No achievement types created yet.",
+    "dailyChallenges": "Daily Challenges",
+    "addChallenge": "Add Challenge",
+    "editChallenge": "Edit Challenge",
+    "question": "Question",
+    "options": "Options",
+    "category": "Category",
+    "addOption": "Add Option",
+    "correctOptionHint": "Select the radio button next to the correct answer.",
+    "noChallenges": "No daily challenges yet. Add one to get started.",
+    "challengeCount": "{count} active of {total} total challenges",
+    "correct": "Correct",
+    "achievementAutoClaimLabel": "Auto-claim:",
+    "achievementAutoClaimDesc": "Users earn these by meeting conditions (e.g., streaks, completions) and claim from their dashboard.",
+    "achievementManualLabel": "Manual:",
+    "achievementManualDesc": "Admin awards directly via the Award button. These are not auto-checked.",
+    "achievementCreatedToast": "Achievement created on-chain. The table will auto-refresh in ~15 seconds. Auto-claim achievements require code changes in achievement-checker.ts. Manual-only achievements can be awarded from this panel.",
+    "recipientUsername": "Username",
+    "userNotFound": "User not found",
+    "noWalletLinked": "User has no wallet linked"
   },
   "creator": {
     "title": "Creator Dashboard",
@@ -535,6 +568,18 @@
     "interestWeb3": "dApps & Frontends",
     "interestPrograms": "On-Chain Programs",
     "loadingRecommendations": "Finding the best courses for you..."
+  },
+  "dailyChallenges": {
+    "title": "Daily Challenge",
+    "completed": "Completed",
+    "correct": "Correct!",
+    "incorrect": "Incorrect, try again tomorrow!",
+    "xpEarned": "earned",
+    "alreadyCompleted": "Completed today!",
+    "submitAnswer": "Submit Answer",
+    "submitting": "Submitting...",
+    "selectAnswer": "Select an answer",
+    "linkWalletToSubmit": "Link a wallet to submit daily challenges and earn XP."
   },
   "footer": {
     "description": "The decentralized learning platform for Solana developers.",

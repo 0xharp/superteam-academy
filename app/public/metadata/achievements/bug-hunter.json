@@ -1,0 +1,14 @@
+{
+  "name": "Bug Hunter",
+  "symbol": "SACAD",
+  "description": "Awarded for reporting a verified bug on Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Bug Hunter" },
+    { "trait_type": "Category", "value": "Special" },
+    { "trait_type": "XP Reward", "value": "200" },
+    { "trait_type": "Rarity", "value": "Rare" }
+  ],
+  "properties": { "category": "achievement" }
+}

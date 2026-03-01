@@ -60,8 +60,12 @@ export interface GamificationService {
   ): Promise<void>;
   /** Update streak without awarding XP (for on-chain lesson completion). */
   recordActivity(userId: string): Promise<void>;
-  getAchievements(userId: string): Promise<Achievement[]>;
-  claimAchievement(userId: string, achievementIndex: number): Promise<void>;
+  getAchievements(userId: string, walletAddress?: string): Promise<Achievement[]>;
+  claimAchievement(
+    userId: string,
+    achievementIndex: number,
+    walletAddress?: string,
+  ): Promise<{ success: boolean; signature?: string; asset?: string; error?: string } | void>;
   getXPHistory(userId: string, limit?: number): Promise<XPTransaction[]>;
 }
 
@@ -113,6 +117,18 @@ export interface ProfileService {
     preferredTheme?: string;
     preferredLanguage?: string;
   }): Promise<void>;
+}
+
+export interface AchievementCheckerService {
+  checkEligibility(userId: string): Promise<number[]>;
+}
+
+export interface AchievementClaimResult {
+  success: boolean;
+  signature?: string;
+  xpEarned?: number;
+  asset?: string;
+  error?: string;
 }
 
 export interface ChallengeService {

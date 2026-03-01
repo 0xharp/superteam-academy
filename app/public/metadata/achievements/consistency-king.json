@@ -1,0 +1,14 @@
+{
+  "name": "Consistency King",
+  "symbol": "SACAD",
+  "description": "Awarded for maintaining a 100-day learning streak.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Consistency King" },
+    { "trait_type": "Category", "value": "Streak" },
+    { "trait_type": "XP Reward", "value": "1000" },
+    { "trait_type": "Rarity", "value": "Legendary" }
+  ],
+  "properties": { "category": "achievement" }
+}

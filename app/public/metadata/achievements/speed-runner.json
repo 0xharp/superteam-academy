@@ -1,0 +1,14 @@
+{
+  "name": "Speed Runner",
+  "symbol": "SACAD",
+  "description": "Awarded for completing a course within 24 hours of enrollment.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Speed Runner" },
+    { "trait_type": "Category", "value": "Progress" },
+    { "trait_type": "XP Reward", "value": "500" },
+    { "trait_type": "Rarity", "value": "Epic" }
+  ],
+  "properties": { "category": "achievement" }
+}

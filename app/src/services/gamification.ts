@@ -7,7 +7,7 @@ import type {
 import { calculateLevel } from "@/types/gamification";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { rowToUserStats } from "@/lib/supabase/mappers";
-import { getCoursePDA } from "@/lib/solana/on-chain";
+import { getCoursePDA, getAchievementReceiptPDA } from "@/lib/solana/on-chain";
 
 const DAILY_XP_CAP = 2000;
 
@@ -48,157 +48,21 @@ function computeNewStreak(
 
 const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlocked" | "unlockedAt">[] =
   [
-    { id: 0, name: "First Steps", description: "Complete your first lesson", icon: "footprints", category: "progress", xpReward: 50 },
-    { id: 1, name: "Course Completer", description: "Complete your first course", icon: "graduation-cap", category: "progress", xpReward: 200 },
-    { id: 2, name: "Speed Runner", description: "Complete a course in one day", icon: "zap", category: "progress", xpReward: 500 },
-    { id: 3, name: "Week Warrior", description: "Maintain a 7-day streak", icon: "flame", category: "streak", xpReward: 100 },
-    { id: 4, name: "Monthly Master", description: "Maintain a 30-day streak", icon: "calendar", category: "streak", xpReward: 300 },
-    { id: 5, name: "Consistency King", description: "Maintain a 100-day streak", icon: "crown", category: "streak", xpReward: 1000 },
-    { id: 6, name: "Rust Rookie", description: "Complete a Rust course", icon: "code", category: "skill", xpReward: 150 },
-    { id: 7, name: "Anchor Expert", description: "Complete all Anchor courses", icon: "anchor", category: "skill", xpReward: 500 },
-    { id: 8, name: "Early Adopter", description: "Among the first 100 users", icon: "star", category: "special", xpReward: 250 },
-    { id: 9, name: "Bug Hunter", description: "Report a verified bug", icon: "bug", category: "special", xpReward: 200 },
-    { id: 10, name: "Social Butterfly", description: "Connect all social accounts", icon: "users", category: "special", xpReward: 100 },
-    { id: 11, name: "Challenge Champion", description: "Complete 50 code challenges", icon: "trophy", category: "progress", xpReward: 400 },
+    { id: 0, achievementId: "first-steps", name: "First Steps", description: "Complete your first lesson", icon: "footprints", category: "progress", xpReward: 50 },
+    { id: 1, achievementId: "course-completer", name: "Course Completer", description: "Complete your first course", icon: "graduation-cap", category: "progress", xpReward: 200 },
+    { id: 2, achievementId: "speed-runner", name: "Speed Runner", description: "Complete a course in one day", icon: "zap", category: "progress", xpReward: 500 },
+    { id: 3, achievementId: "week-warrior", name: "Week Warrior", description: "Maintain a 7-day streak", icon: "flame", category: "streak", xpReward: 100 },
+    { id: 4, achievementId: "monthly-master", name: "Monthly Master", description: "Maintain a 30-day streak", icon: "calendar", category: "streak", xpReward: 300 },
+    { id: 5, achievementId: "consistency-king", name: "Consistency King", description: "Maintain a 100-day streak", icon: "crown", category: "streak", xpReward: 1000 },
+    { id: 6, achievementId: "rust-rookie", name: "Rust Rookie", description: "Complete a Rust course", icon: "code", category: "skill", xpReward: 150 },
+    { id: 7, achievementId: "anchor-expert", name: "Anchor Expert", description: "Complete all Anchor courses", icon: "anchor", category: "skill", xpReward: 500 },
+    { id: 8, achievementId: "early-adopter", name: "Early Adopter", description: "Among the first 100 users", icon: "star", category: "special", xpReward: 250 },
+    { id: 9, achievementId: "bug-hunter", name: "Bug Hunter", description: "Report a verified bug", icon: "bug", category: "special", xpReward: 200 },
+    { id: 10, achievementId: "social-butterfly", name: "Social Butterfly", description: "Connect all social accounts", icon: "users", category: "special", xpReward: 100 },
+    { id: 11, achievementId: "challenge-champion", name: "Challenge Champion", description: "Complete 50 code challenges", icon: "trophy", category: "progress", xpReward: 400 },
   ];
 
-// --- Mock Implementation ---
-
-interface MockUserData {
-  xp: number;
-  streak: StreakData;
-  achievements: number[];
-  xpHistory: XPTransaction[];
-}
-
-const mockUsers = new Map<string, MockUserData>();
-
-function getOrCreate(userId: string): MockUserData {
-  if (!mockUsers.has(userId)) {
-    mockUsers.set(userId, {
-      xp: 0,
-      streak: {
-        currentStreak: 0,
-        longestStreak: 0,
-        lastActivityDate: null,
-        streakFreezes: 3,
-        isActiveToday: false,
-      },
-      achievements: [0, 0, 0, 0],
-      xpHistory: [],
-    });
-  }
-  return mockUsers.get(userId)!;
-}
-
-class MockGamificationService implements GamificationService {
-  async getXP(userId: string): Promise<number> {
-    return getOrCreate(userId).xp;
-  }
-
-  async getLevel(userId: string): Promise<number> {
-    return calculateLevel(getOrCreate(userId).xp).level;
-  }
-
-  async getStreak(userId: string): Promise<StreakData> {
-    return { ...getOrCreate(userId).streak };
-  }
-
-  async awardXP(
-    userId: string,
-    amount: number,
-    source: string,
-    sourceId?: string,
-  ): Promise<void> {
-    const data = getOrCreate(userId);
-    const today = new Date().toISOString().split("T")[0];
-    const todayXP = data.xpHistory
-      .filter((t) => t.createdAt.startsWith(today))
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const cappedAmount = Math.min(amount, DAILY_XP_CAP - todayXP);
-    if (cappedAmount <= 0) return;
-
-    data.xp += cappedAmount;
-    data.xpHistory.push({
-      id: crypto.randomUUID(),
-      userId,
-      amount: cappedAmount,
-      source: source as XPTransaction["source"],
-      sourceId,
-      createdAt: new Date().toISOString(),
-    });
-
-    if (data.streak.lastActivityDate !== today) {
-      const { newStreak, freezesUsed } = computeNewStreak(
-        data.streak.lastActivityDate,
-        today,
-        data.streak.currentStreak,
-        data.streak.streakFreezes,
-      );
-      data.streak.currentStreak = newStreak;
-      data.streak.streakFreezes -= freezesUsed;
-      data.streak.lastActivityDate = today;
-      data.streak.isActiveToday = true;
-      if (data.streak.currentStreak > data.streak.longestStreak) {
-        data.streak.longestStreak = data.streak.currentStreak;
-      }
-    }
-  }
-
-  async recordActivity(userId: string): Promise<void> {
-    const data = getOrCreate(userId);
-    const today = new Date().toISOString().split("T")[0];
-    if (data.streak.lastActivityDate === today) return;
-    const { newStreak, freezesUsed } = computeNewStreak(
-      data.streak.lastActivityDate,
-      today,
-      data.streak.currentStreak,
-      data.streak.streakFreezes,
-    );
-    data.streak.currentStreak = newStreak;
-    data.streak.streakFreezes -= freezesUsed;
-    data.streak.lastActivityDate = today;
-    data.streak.isActiveToday = true;
-    if (data.streak.currentStreak > data.streak.longestStreak) {
-      data.streak.longestStreak = data.streak.currentStreak;
-    }
-  }
-
-  async getAchievements(userId: string): Promise<Achievement[]> {
-    const data = getOrCreate(userId);
-    return ACHIEVEMENT_DEFINITIONS.map((def) => {
-      const flagIndex = Math.floor(def.id / 64);
-      const bit = def.id % 64;
-      const unlocked =
-        flagIndex < data.achievements.length &&
-        (data.achievements[flagIndex] & (1 << bit)) !== 0;
-      return {
-        ...def,
-        unlocked,
-        unlockedAt: unlocked ? new Date().toISOString() : undefined,
-      };
-    });
-  }
-
-  async claimAchievement(userId: string, achievementIndex: number): Promise<void> {
-    const data = getOrCreate(userId);
-    const flagIndex = Math.floor(achievementIndex / 64);
-    while (data.achievements.length <= flagIndex) {
-      data.achievements.push(0);
-    }
-    data.achievements[flagIndex] |= 1 << (achievementIndex % 64);
-    const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.id === achievementIndex);
-    if (def) {
-      await this.awardXP(userId, def.xpReward, "achievement", String(achievementIndex));
-    }
-  }
-
-  async getXPHistory(userId: string, limit = 20): Promise<XPTransaction[]> {
-    const data = getOrCreate(userId);
-    return data.xpHistory.slice(-limit).reverse();
-  }
-}
+export { ACHIEVEMENT_DEFINITIONS };
 
 // --- Supabase Implementation ---
 
@@ -393,51 +257,127 @@ class SupabaseGamificationService implements GamificationService {
       .eq("user_id", userId);
   }
 
-  async getAchievements(userId: string): Promise<Achievement[]> {
-    const { data } = await this.db
-      .from("user_stats")
-      .select("achievement_flags")
-      .eq("user_id", userId)
-      .single();
+  async getAchievements(userId: string, walletAddress?: string): Promise<Achievement[]> {
+    // Build achievement list from on-chain types + hardcoded metadata fallbacks
+    let allDefs: (Omit<Achievement, "unlocked" | "unlockedAt"> & { isActive: boolean })[];
 
-    const flags: number[] = data?.achievement_flags ?? [0, 0, 0, 0];
+    try {
+      const { program } = await import("@/lib/solana/program");
+      const onChainAccounts = await program.account.achievementType.all();
 
-    return ACHIEVEMENT_DEFINITIONS.map((def) => {
-      const flagIndex = Math.floor(def.id / 64);
-      const bit = def.id % 64;
-      const unlocked =
-        flagIndex < flags.length && (flags[flagIndex] & (1 << bit)) !== 0;
-      return {
+      const hardcodedMap = new Map(
+        ACHIEVEMENT_DEFINITIONS.map((d) => [d.achievementId, d]),
+      );
+
+      allDefs = onChainAccounts.map((a, i) => {
+        const hc = hardcodedMap.get(a.account.achievementId);
+        return {
+          id: hc?.id ?? 100 + i,
+          achievementId: a.account.achievementId,
+          name: hc?.name ?? a.account.name,
+          description: hc?.description ?? a.account.name,
+          icon: hc?.icon ?? "trophy",
+          category: hc?.category ?? "special",
+          xpReward: a.account.xpReward,
+          isActive: a.account.isActive,
+        };
+      });
+    } catch {
+      allDefs = ACHIEVEMENT_DEFINITIONS.map((d) => ({ ...d, isActive: true }));
+    }
+
+    if (!walletAddress) {
+      // No wallet: show only active achievements (can't check receipts)
+      return allDefs
+        .filter((def) => def.isActive)
+        .map(({ isActive: _, ...def }) => ({
+          ...def,
+          unlocked: false,
+          unlockedAt: undefined,
+        }));
+    }
+
+    const { PublicKey } = await import("@solana/web3.js");
+    const { connection } = await import("@/lib/solana/on-chain");
+    const recipient = new PublicKey(walletAddress);
+
+    const pdas = allDefs.map((def) =>
+      getAchievementReceiptPDA(def.achievementId, recipient)[0],
+    );
+
+    const accounts = await connection.getMultipleAccountsInfo(pdas);
+
+    // Show active achievements + any inactive ones the user has already earned
+    return allDefs
+      .map(({ isActive, ...def }, i) => ({
         ...def,
-        unlocked,
-        unlockedAt: unlocked ? new Date().toISOString() : undefined,
-      };
-    });
+        unlocked: accounts[i] !== null,
+        unlockedAt: accounts[i] ? new Date().toISOString() : undefined,
+        _isActive: isActive,
+      }))
+      .filter((ach) => ach._isActive || ach.unlocked)
+      .map(({ _isActive, ...ach }) => ach);
   }
 
-  async claimAchievement(userId: string, achievementIndex: number): Promise<void> {
-    const { data } = await this.db
-      .from("user_stats")
-      .select("achievement_flags")
-      .eq("user_id", userId)
-      .single();
-
-    const flags: number[] = [...(data?.achievement_flags ?? [0, 0, 0, 0])];
-    const flagIndex = Math.floor(achievementIndex / 64);
-    while (flags.length <= flagIndex) {
-      flags.push(0);
-    }
-    flags[flagIndex] |= 1 << (achievementIndex % 64);
-
-    await this.db
-      .from("user_stats")
-      .update({ achievement_flags: flags })
-      .eq("user_id", userId);
-
+  async claimAchievement(
+    userId: string,
+    achievementIndex: number,
+    walletAddress?: string,
+  ): Promise<{ success: boolean; signature?: string; asset?: string; error?: string }> {
     const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.id === achievementIndex);
-    if (def) {
-      await this.awardXP(userId, def.xpReward, "achievement", String(achievementIndex));
+    if (!def) return { success: false, error: "Unknown achievement" };
+
+    if (!walletAddress) {
+      return { success: false, error: "Wallet required to claim achievements on-chain" };
     }
+
+    // Check not already claimed on-chain
+    const { PublicKey } = await import("@solana/web3.js");
+    const { connection } = await import("@/lib/solana/on-chain");
+    const receiptPDA = getAchievementReceiptPDA(
+      def.achievementId,
+      new PublicKey(walletAddress),
+    )[0];
+    const existing = await connection.getAccountInfo(receiptPDA);
+    if (existing) {
+      return { success: false, error: "Achievement already claimed" };
+    }
+
+    // Call backend to award on-chain
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
+
+    // Build a minimal JWT for backend auth
+    const { SignJWT } = await import("jose");
+    const token = await new SignJWT({ sub: userId })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("5m")
+      .sign(new TextEncoder().encode(authSecret));
+
+    const response = await fetch(`${backendUrl}/award-achievement`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        achievementId: def.achievementId,
+        recipientWallet: walletAddress,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Backend error" }));
+      return { success: false, error: err.error || "Failed to award achievement on-chain" };
+    }
+
+    const result = await response.json();
+
+    return {
+      success: true,
+      signature: result.signature,
+      asset: result.asset,
+    };
   }
 
   async getXPHistory(userId: string, limit = 20): Promise<XPTransaction[]> {
@@ -463,16 +403,6 @@ class SupabaseGamificationService implements GamificationService {
   }
 }
 
-// --- Singleton with fallback ---
+// --- Singleton ---
 
-function createService(): GamificationService {
-  if (
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    return new SupabaseGamificationService();
-  }
-  return new MockGamificationService();
-}
-
-export const gamificationService: GamificationService = createService();
+export const gamificationService: GamificationService = new SupabaseGamificationService();

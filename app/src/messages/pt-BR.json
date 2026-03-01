@@ -48,7 +48,11 @@
     "beginner": "Iniciante",
     "intermediate": "Intermediario",
     "advanced": "Avancado",
-    "challenge": "Desafio"
+    "challenge": "Desafio",
+    "status": "Status",
+    "actions": "Ações",
+    "active": "Ativo",
+    "inactive": "Inativo"
   },
   "landing": {
     "newCourse": "Novo Curso",
@@ -374,7 +378,13 @@
     "streakDays": "Sequencia de {count} dias",
     "dailyXPCap": "Limite diario de XP atingido",
     "freezeAvailable": "Congelamento de sequencia disponivel",
-    "freezeUsed": "Congelamento de sequencia usado"
+    "freezeUsed": "Congelamento de sequencia usado",
+    "claimAchievement": "Resgatar",
+    "achievementClaimed": "Conquista resgatada!",
+    "eligible": "Elegivel",
+    "locked": "Bloqueado",
+    "claiming": "Resgatando...",
+    "claimFailed": "Falha ao resgatar conquista"
   },
   "community": {
     "title": "Comunidade",
@@ -501,7 +511,30 @@
     "featuredOrder": "Ordem",
     "maxFeatured": "Maximo de 10 depoimentos destacados atingido.",
     "newTestimonials": "Novos Depoimentos",
-    "featuredTestimonials": "Depoimentos Destacados"
+    "featuredTestimonials": "Depoimentos Destacados",
+    "achievements": "Conquistas",
+    "createAchievementType": "Criar Tipo de Conquista",
+    "achievementName": "Nome",
+    "noAchievementTypes": "Nenhum tipo de conquista criado ainda.",
+    "dailyChallenges": "Desafios Diarios",
+    "addChallenge": "Adicionar Desafio",
+    "editChallenge": "Editar Desafio",
+    "question": "Pergunta",
+    "options": "Opcoes",
+    "category": "Categoria",
+    "addOption": "Adicionar Opcao",
+    "correctOptionHint": "Selecione o botao ao lado da resposta correta.",
+    "noChallenges": "Nenhum desafio diario ainda. Adicione um para comecar.",
+    "challengeCount": "{count} ativos de {total} desafios no total",
+    "correct": "Correto",
+    "achievementAutoClaimLabel": "Auto-resgate:",
+    "achievementAutoClaimDesc": "Usuarios conquistam ao cumprir condicoes (sequencias, conclusoes) e resgatam do painel.",
+    "achievementManualLabel": "Manual:",
+    "achievementManualDesc": "Admin concede diretamente pelo botao Conceder. Nao sao verificados automaticamente.",
+    "achievementCreatedToast": "Conquista criada on-chain. A tabela sera atualizada automaticamente em ~15 segundos. Conquistas auto-resgate requerem alteracoes em achievement-checker.ts. Conquistas manuais podem ser concedidas deste painel.",
+    "recipientUsername": "Nome de usuario",
+    "userNotFound": "Usuario nao encontrado",
+    "noWalletLinked": "Usuario nao tem carteira vinculada"
   },
   "creator": {
     "title": "Painel do Criador",
@@ -535,6 +568,18 @@
     "interestWeb3": "dApps e Frontends",
     "interestPrograms": "Programas On-Chain",
     "loadingRecommendations": "Encontrando os melhores cursos para voce..."
+  },
+  "dailyChallenges": {
+    "title": "Desafio Diario",
+    "completed": "Concluido",
+    "correct": "Correto!",
+    "incorrect": "Incorreto, tente novamente amanha!",
+    "xpEarned": "ganho",
+    "alreadyCompleted": "Concluido hoje!",
+    "submitAnswer": "Enviar Resposta",
+    "submitting": "Enviando...",
+    "selectAnswer": "Selecione uma resposta",
+    "linkWalletToSubmit": "Conecte uma carteira para enviar desafios diarios e ganhar XP."
   },
   "footer": {
     "description": "A plataforma de aprendizado descentralizada para desenvolvedores Solana.",

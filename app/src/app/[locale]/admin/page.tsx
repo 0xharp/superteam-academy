@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,12 +62,13 @@ import {
   ArrowDown,
   Check,
   X,
-  Archive,
+  Trash2,
   Flame,
   Copy,
   Pencil,
   Eye,
   Loader2,
+  Info,
 } from "lucide-react";
 import { SUBMISSION_STATUS, COURSE_ACTIONS } from "@/types/course";
 import { Link } from "@/i18n/routing";
@@ -224,6 +225,51 @@ export default function AdminPage() {
   const [loadingTestimonials, setLoadingTestimonials] = useState(true);
   const [featuringId, setFeaturingId] = useState<string | null>(null);
 
+  // Daily challenge management state
+  interface AdminChallenge {
+    id: string;
+    question: string;
+    options: string[] | string;
+    correct_index: number;
+    xp_reward: number;
+    category: string;
+    is_active: boolean;
+    sort_order: number;
+  }
+  const [challenges, setChallenges] = useState<AdminChallenge[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
+  const [challengeDialog, setChallengeDialog] = useState<{ mode: "create" | "edit"; challenge?: AdminChallenge } | null>(null);
+  const [challengeForm, setChallengeForm] = useState({ question: "", options: ["", "", "", ""], correct_index: 0, xp_reward: 50, category: "fundamentals" });
+  const [challengeLoading, setChallengeLoading] = useState<string | null>(null);
+
+  // Achievement management state
+  interface AdminAchievementType {
+    publicKey: string;
+    achievementId: string;
+    name: string;
+    metadataUri: string;
+    collection: string;
+    creator: string;
+    maxSupply: number;
+    currentSupply: number;
+    xpReward: number;
+    isActive: boolean;
+    createdAt: number;
+  }
+  const [achievementTypes, setAchievementTypes] = useState<AdminAchievementType[]>([]);
+  const [loadingAchievements, setLoadingAchievements] = useState(true);
+  const [achCreateDialog, setAchCreateDialog] = useState(false);
+  const [achCreateForm, setAchCreateForm] = useState({ achievementId: "", name: "", metadataUri: "", maxSupply: 0, xpReward: 50 });
+  const [achAwardDialog, setAchAwardDialog] = useState<{ achievementId: string } | null>(null);
+  const [achAwardUsername, setAchAwardUsername] = useState("");
+  const [achLoading, setAchLoading] = useState<string | null>(null);
+  const achInitialLoad = useRef(true);
+  const [achSortBy, setAchSortBy] = useState<string>("achievementId");
+  const [achSortOrder, setAchSortOrder] = useState<SortDir>("asc");
+  const [achAwardResults, setAchAwardResults] = useState<Array<{ username: string; display_name: string | null; email: string | null; avatar_url: string | null }>>([]);
+  const [achAwardSearching, setAchAwardSearching] = useState(false);
+  const achAwardDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Data Fetching ───────────────────────────────────────────────────────
 
   const fetchStats = useCallback(async () => {
@@ -273,13 +319,36 @@ export default function AdminPage() {
     setLoadingTestimonials(false);
   }, []);
 
+  const fetchAchievementTypes = useCallback(async () => {
+    if (achInitialLoad.current) setLoadingAchievements(true);
+    const res = await fetch("/api/admin/achievements");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setAchievementTypes(data);
+    }
+    setLoadingAchievements(false);
+    achInitialLoad.current = false;
+  }, []);
+
+  const fetchChallenges = useCallback(async () => {
+    setLoadingChallenges(true);
+    const res = await fetch("/api/admin/daily-challenges");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setChallenges(data);
+    }
+    setLoadingChallenges(false);
+  }, []);
+
   useEffect(() => {
     fetchStats();
     fetchAnalytics();
     fetchCourses();
     fetchTracks();
     fetchTestimonials();
-  }, [fetchStats, fetchAnalytics, fetchCourses, fetchTracks, fetchTestimonials]);
+    fetchAchievementTypes();
+    fetchChallenges();
+  }, [fetchStats, fetchAnalytics, fetchCourses, fetchTracks, fetchTestimonials, fetchAchievementTypes, fetchChallenges]);
 
   useEffect(() => {
     fetchUsers();
@@ -305,6 +374,44 @@ export default function AdminPage() {
       <ArrowDown className="ml-1 inline h-3 w-3" />
     );
   }
+
+  function toggleAchSort(col: string) {
+    if (achSortBy === col) {
+      setAchSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setAchSortBy(col);
+      setAchSortOrder("asc");
+    }
+  }
+
+  function AchSortIcon({ col }: { col: string }) {
+    if (achSortBy !== col) return <ArrowUpDown className="ml-1 inline h-3 w-3 opacity-30" />;
+    return achSortOrder === "asc" ? (
+      <ArrowUp className="ml-1 inline h-3 w-3" />
+    ) : (
+      <ArrowDown className="ml-1 inline h-3 w-3" />
+    );
+  }
+
+  const sortedAchievementTypes = useMemo(() => {
+    const sorted = [...achievementTypes];
+    sorted.sort((a, b) => {
+      let aVal: string | number | boolean = "";
+      let bVal: string | number | boolean = "";
+      switch (achSortBy) {
+        case "achievementId": aVal = a.achievementId; bVal = b.achievementId; break;
+        case "name": aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
+        case "currentSupply": aVal = a.currentSupply; bVal = b.currentSupply; break;
+        case "xpReward": aVal = a.xpReward; bVal = b.xpReward; break;
+        case "isActive": aVal = a.isActive ? 1 : 0; bVal = b.isActive ? 1 : 0; break;
+        default: aVal = a.achievementId; bVal = b.achievementId;
+      }
+      if (aVal < bVal) return achSortOrder === "asc" ? -1 : 1;
+      if (aVal > bVal) return achSortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [achievementTypes, achSortBy, achSortOrder]);
 
   // ── Actions ─────────────────────────────────────────────────────────────
 
@@ -389,6 +496,8 @@ export default function AdminPage() {
           <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
           <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
           <TabsTrigger value="testimonials">{t("testimonials")}</TabsTrigger>
+          <TabsTrigger value="achievements">{t("achievements")}</TabsTrigger>
+          <TabsTrigger value="challenges">{t("dailyChallenges")}</TabsTrigger>
         </TabsList>
 
         {/* ── Overview / Analytics ──────────────────────────────────────── */}
@@ -714,7 +823,7 @@ export default function AdminPage() {
                                         disabled={actionLoading === course.courseId}
                                         onClick={() => courseAction(course.courseId, COURSE_ACTIONS.DEACTIVATE)}
                                       >
-                                        <Archive className="h-3.5 w-3.5" />
+                                        <Trash2 className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("deactivate")}</TooltipContent>
@@ -1011,7 +1120,536 @@ export default function AdminPage() {
           </div>
           )}
         </TabsContent>
+
+        {/* ── Achievements ──────────────────────────────────────────── */}
+        <TabsContent value="achievements">
+          <div className="space-y-6">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-4">
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                  <p><strong>{t("achievementAutoClaimLabel")}</strong> {t("achievementAutoClaimDesc")}</p>
+                  <p><strong>{t("achievementManualLabel")}</strong> {t("achievementManualDesc")}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t("achievements")}</h3>
+              <Button onClick={() => setAchCreateDialog(true)}>{t("createAchievementType")}</Button>
+            </div>
+            {loadingAchievements ? (
+              <Card><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleAchSort("achievementId")}>ID<AchSortIcon col="achievementId" /></TableHead>
+                        <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleAchSort("name")}>{t("achievementName")}<AchSortIcon col="name" /></TableHead>
+                        <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleAchSort("currentSupply")}>Supply<AchSortIcon col="currentSupply" /></TableHead>
+                        <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleAchSort("xpReward")}>{tc("xp")}<AchSortIcon col="xpReward" /></TableHead>
+                        <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleAchSort("isActive")}>{tc("status")}<AchSortIcon col="isActive" /></TableHead>
+                        <TableHead>{t("actions")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedAchievementTypes.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            {t("noAchievementTypes")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        sortedAchievementTypes.map((ach) => (
+                          <TableRow key={ach.publicKey}>
+                            <TableCell className="font-mono text-xs">{ach.achievementId}</TableCell>
+                            <TableCell>{ach.name}</TableCell>
+                            <TableCell>{ach.currentSupply}{ach.maxSupply > 0 ? `/${ach.maxSupply}` : "/\u221E"}</TableCell>
+                            <TableCell>{ach.xpReward}</TableCell>
+                            <TableCell>
+                              <Badge variant={ach.isActive ? "default" : "secondary"}>
+                                {ach.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={achLoading === ach.achievementId}
+                                  onClick={() => {
+                                    setAchAwardDialog({ achievementId: ach.achievementId });
+                                    setAchAwardUsername("");
+                                  }}
+                                >
+                                  Award
+                                </Button>
+                                {ach.isActive && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={achLoading === ach.achievementId}
+                                    onClick={async () => {
+                                      setAchLoading(ach.achievementId);
+                                      const res = await fetch(`/api/admin/achievements/${ach.achievementId}`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ action: "deactivate" }),
+                                      });
+                                      if (res.ok) {
+                                        toast.success("Achievement type deactivated. The table will auto-refresh in ~15 seconds.", { duration: 8000 });
+                                        setTimeout(() => fetchAchievementTypes(), 15000);
+                                      } else {
+                                        const err = await res.json().catch(() => ({ error: "Failed" }));
+                                        toast.error(err.error);
+                                      }
+                                      setAchLoading(null);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── Daily Challenges ──────────────────────────────────────── */}
+        <TabsContent value="challenges">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t("dailyChallenges")}</h3>
+              <Button onClick={() => {
+                setChallengeForm({ question: "", options: ["", "", "", ""], correct_index: 0, xp_reward: 50, category: "fundamentals" });
+                setChallengeDialog({ mode: "create" });
+              }}>{t("addChallenge")}</Button>
+            </div>
+            {loadingChallenges ? (
+              <Card><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>{t("question")}</TableHead>
+                        <TableHead>{t("category")}</TableHead>
+                        <TableHead>{tc("xp")}</TableHead>
+                        <TableHead>{tc("status")}</TableHead>
+                        <TableHead>{t("actions")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {challenges.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            {t("noChallenges")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        challenges.map((ch) => {
+                          const opts: string[] = typeof ch.options === "string" ? JSON.parse(ch.options) : ch.options;
+                          return (
+                            <TableRow key={ch.id}>
+                              <TableCell className="text-muted-foreground">{ch.sort_order}</TableCell>
+                              <TableCell>
+                                <div className="max-w-md">
+                                  <p className="text-sm font-medium truncate">{ch.question}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {t("correct")}: {opts[ch.correct_index]}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell><Badge variant="outline">{ch.category}</Badge></TableCell>
+                              <TableCell>{ch.xp_reward}</TableCell>
+                              <TableCell>
+                                <Badge variant={ch.is_active ? "default" : "secondary"}>
+                                  {ch.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setChallengeForm({
+                                        question: ch.question,
+                                        options: [...opts],
+                                        correct_index: ch.correct_index,
+                                        xp_reward: ch.xp_reward,
+                                        category: ch.category,
+                                      });
+                                      setChallengeDialog({ mode: "edit", challenge: ch });
+                                    }}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={challengeLoading === ch.id}
+                                    onClick={async () => {
+                                      setChallengeLoading(ch.id);
+                                      await fetch(`/api/admin/daily-challenges/${ch.id}`, {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ is_active: !ch.is_active }),
+                                      });
+                                      fetchChallenges();
+                                      setChallengeLoading(null);
+                                    }}
+                                  >
+                                    {ch.is_active ? <Trash2 className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    disabled={challengeLoading === `del-${ch.id}`}
+                                    onClick={async () => {
+                                      if (!confirm("Delete this challenge?")) return;
+                                      setChallengeLoading(`del-${ch.id}`);
+                                      const res = await fetch(`/api/admin/daily-challenges/${ch.id}`, { method: "DELETE" });
+                                      if (res.ok) {
+                                        toast.success("Challenge deleted");
+                                        fetchChallenges();
+                                      } else {
+                                        const err = await res.json().catch(() => ({ error: "Failed" }));
+                                        toast.error(err.error);
+                                      }
+                                      setChallengeLoading(null);
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {t("challengeCount", { count: challenges.filter((c) => c.is_active).length, total: challenges.length })}
+            </p>
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* ── Achievement Create Dialog ────────────────────────────────── */}
+      <Dialog open={achCreateDialog} onOpenChange={setAchCreateDialog}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{t("createAchievementType")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Achievement ID</label>
+              <Input value={achCreateForm.achievementId} onChange={(e) => setAchCreateForm((f) => ({ ...f, achievementId: e.target.value }))} placeholder="e.g. bug-hunter" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("achievementName")}</label>
+              <Input value={achCreateForm.name} onChange={(e) => setAchCreateForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Metadata URI</label>
+              <Input value={achCreateForm.metadataUri} onChange={(e) => setAchCreateForm((f) => ({ ...f, metadataUri: e.target.value }))} placeholder="https://arweave.net/..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Max Supply (0 = unlimited)</label>
+                <Input type="number" value={achCreateForm.maxSupply} onChange={(e) => setAchCreateForm((f) => ({ ...f, maxSupply: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">XP Reward</label>
+                <Input type="number" value={achCreateForm.xpReward} onChange={(e) => setAchCreateForm((f) => ({ ...f, xpReward: parseInt(e.target.value) || 0 }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAchCreateDialog(false)}>{tc("cancel")}</Button>
+            <Button
+              disabled={achLoading === "create"}
+              onClick={async () => {
+                setAchLoading("create");
+                const res = await fetch("/api/admin/achievements", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(achCreateForm),
+                });
+                if (res.ok) {
+                  toast.success(t("achievementCreatedToast"), { duration: 8000 });
+                  setAchCreateDialog(false);
+                  setAchCreateForm({ achievementId: "", name: "", metadataUri: "", maxSupply: 0, xpReward: 50 });
+                  setTimeout(() => fetchAchievementTypes(), 15000);
+                } else {
+                  const err = await res.json().catch(() => ({ error: "Failed" }));
+                  toast.error(err.error);
+                }
+                setAchLoading(null);
+              }}
+            >
+              {achLoading === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : tc("submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Achievement Award Dialog ────────────────────────────────── */}
+      <Dialog open={!!achAwardDialog} onOpenChange={(open) => {
+        if (!open) {
+          setAchAwardDialog(null);
+          setAchAwardResults([]);
+          setAchAwardUsername("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Award Achievement: {achAwardDialog?.achievementId}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <label className="text-sm font-medium">{t("recipientUsername")}</label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  value={achAwardUsername}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAchAwardUsername(val);
+                    if (achAwardDebounce.current) clearTimeout(achAwardDebounce.current);
+                    if (val.length < 2) { setAchAwardResults([]); return; }
+                    achAwardDebounce.current = setTimeout(async () => {
+                      setAchAwardSearching(true);
+                      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(val)}&limit=5`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        setAchAwardResults((data.users ?? []).map((u: AdminUser) => ({
+                          username: u.username,
+                          display_name: u.display_name,
+                          email: u.email,
+                          avatar_url: u.avatar_url,
+                        })));
+                      }
+                      setAchAwardSearching(false);
+                    }, 300);
+                  }}
+                  placeholder="Search by name, email, or username..."
+                />
+                {achAwardSearching && (
+                  <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {achAwardResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                  {achAwardResults.map((user) => (
+                    <button
+                      key={user.username}
+                      type="button"
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent transition-colors first:rounded-t-md last:rounded-b-md"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setAchAwardUsername(user.username ?? "");
+                        setAchAwardResults([]);
+                      }}
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={user.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-xs">
+                          {(user.display_name ?? "U")[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {user.display_name ?? "Unnamed"}{" "}
+                          <span className="text-muted-foreground font-normal">@{user.username}</span>
+                        </p>
+                        {user.email && (
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAchAwardDialog(null)}>{tc("cancel")}</Button>
+            <Button
+              disabled={achLoading === "award" || !achAwardUsername}
+              onClick={async () => {
+                if (!achAwardDialog) return;
+                setAchLoading("award");
+                const res = await fetch(`/api/admin/achievements/${achAwardDialog.achievementId}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "award", recipientUsername: achAwardUsername }),
+                });
+                if (res.ok) {
+                  toast.success("Achievement awarded on-chain");
+                  setAchAwardDialog(null);
+                  fetchAchievementTypes();
+                } else {
+                  const err = await res.json().catch(() => ({ error: "Failed" }));
+                  toast.error(err.error);
+                }
+                setAchLoading(null);
+              }}
+            >
+              {achLoading === "award" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Award"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Challenge Create/Edit Dialog ──────────────────────────────── */}
+      <Dialog open={!!challengeDialog} onOpenChange={(open) => !open && setChallengeDialog(null)}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{challengeDialog?.mode === "create" ? t("addChallenge") : t("editChallenge")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div>
+              <label className="text-sm font-medium">{t("question")}</label>
+              <Textarea
+                value={challengeForm.question}
+                onChange={(e) => setChallengeForm((f) => ({ ...f, question: e.target.value }))}
+                placeholder="e.g. What is a PDA in Solana?"
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t("options")}</label>
+              {challengeForm.options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correct_index"
+                    checked={challengeForm.correct_index === i}
+                    onChange={() => setChallengeForm((f) => ({ ...f, correct_index: i }))}
+                    className="accent-primary"
+                  />
+                  <Input
+                    value={opt}
+                    onChange={(e) => {
+                      const newOpts = [...challengeForm.options];
+                      newOpts[i] = e.target.value;
+                      setChallengeForm((f) => ({ ...f, options: newOpts }));
+                    }}
+                    placeholder={`Option ${i + 1}`}
+                  />
+                  {challengeForm.options.length > 2 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newOpts = challengeForm.options.filter((_, j) => j !== i);
+                        const newCorrect = challengeForm.correct_index >= newOpts.length ? 0 : challengeForm.correct_index > i ? challengeForm.correct_index - 1 : challengeForm.correct_index;
+                        setChallengeForm((f) => ({ ...f, options: newOpts, correct_index: newCorrect }));
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {challengeForm.options.length < 6 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setChallengeForm((f) => ({ ...f, options: [...f.options, ""] }))}
+                >
+                  + {t("addOption")}
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">{t("correctOptionHint")}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">{t("category")}</label>
+                <Select value={challengeForm.category} onValueChange={(v) => setChallengeForm((f) => ({ ...f, category: v }))}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fundamentals">Fundamentals</SelectItem>
+                    <SelectItem value="programs">Programs</SelectItem>
+                    <SelectItem value="tokens">Tokens</SelectItem>
+                    <SelectItem value="defi">DeFi</SelectItem>
+                    <SelectItem value="security">Security</SelectItem>
+                    <SelectItem value="tooling">Tooling</SelectItem>
+                    <SelectItem value="ecosystem">Ecosystem</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">XP Reward</label>
+                <Input
+                  type="number"
+                  value={challengeForm.xp_reward}
+                  onChange={(e) => setChallengeForm((f) => ({ ...f, xp_reward: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChallengeDialog(null)}>{tc("cancel")}</Button>
+            <Button
+              disabled={challengeLoading === "save" || !challengeForm.question || challengeForm.options.some((o) => !o.trim())}
+              onClick={async () => {
+                setChallengeLoading("save");
+                if (challengeDialog?.mode === "create") {
+                  const res = await fetch("/api/admin/daily-challenges", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(challengeForm),
+                  });
+                  if (res.ok) {
+                    toast.success("Challenge created");
+                    setChallengeDialog(null);
+                    fetchChallenges();
+                  } else {
+                    const err = await res.json().catch(() => ({ error: "Failed" }));
+                    toast.error(err.error);
+                  }
+                } else if (challengeDialog?.challenge) {
+                  const res = await fetch(`/api/admin/daily-challenges/${challengeDialog.challenge.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(challengeForm),
+                  });
+                  if (res.ok) {
+                    toast.success("Challenge updated");
+                    setChallengeDialog(null);
+                    fetchChallenges();
+                  } else {
+                    const err = await res.json().catch(() => ({ error: "Failed" }));
+                    toast.error(err.error);
+                  }
+                }
+                setChallengeLoading(null);
+              }}
+            >
+              {challengeLoading === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : challengeDialog?.mode === "create" ? t("create") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Track Create/Edit Dialog ────────────────────────────────── */}
       <Dialog open={!!trackDialog} onOpenChange={(open) => !open && setTrackDialog(null)}>

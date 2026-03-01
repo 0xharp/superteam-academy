@@ -1,0 +1,14 @@
+{
+  "name": "First Steps",
+  "symbol": "SACAD",
+  "description": "Awarded for completing your first lesson on Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "First Steps" },
+    { "trait_type": "Category", "value": "Progress" },
+    { "trait_type": "XP Reward", "value": "50" },
+    { "trait_type": "Rarity", "value": "Common" }
+  ],
+  "properties": { "category": "achievement" }
+}

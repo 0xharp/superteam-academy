@@ -150,14 +150,27 @@ class HeliusSyncService implements OnChainSyncService {
     const progId = PROGRAM_ID.toBase58();
     const records: XpMintRecord[] = [];
 
-    // Extract course PDA only from complete_lesson/finalize_course instructions.
-    // These have accounts layout: [config, course, enrollment, learner, xp_mint, ...]
-    // We identify them by checking accounts[4] === XP_MINT.
-    // For reward_xp/award_achievement, store a static label instead.
+    // Extract course PDA or achievement PDA from instruction account layouts.
+    //
+    // complete_lesson/finalize_course: [config, course, enrollment, learner, xp_mint, ...]
+    //   → accounts[4] === XP_MINT → coursePda = accounts[1] (course PDA)
+    //
+    // award_achievement: [config, achievement_type, achievement_receipt, minter_role, asset, collection, recipient, recipient_token_account, xp_mint, ...]
+    //   → accounts[8] === XP_MINT → coursePda = "ach:<accounts[1]>" (AchievementType PDA)
+    //
+    // reward_xp: [config, minter_role, xp_mint, recipient_token_account, minter, token_program]
+    //   → accounts[2] === XP_MINT → NON_COURSE_XP_LABEL
     let coursePda: string = NON_COURSE_XP_LABEL;
     for (const inst of tx.instructions) {
-      if (inst.programId === progId && inst.accounts.length >= 5 && inst.accounts[4] === xpMint) {
+      if (inst.programId !== progId) continue;
+      // Course instructions: accounts[4] = xp_mint
+      if (inst.accounts.length >= 5 && inst.accounts[4] === xpMint) {
         coursePda = inst.accounts[1];
+        break;
+      }
+      // award_achievement: accounts[8] = xp_mint
+      if (inst.accounts.length >= 9 && inst.accounts[8] === xpMint) {
+        coursePda = `ach:${inst.accounts[1]}`;
         break;
       }
     }

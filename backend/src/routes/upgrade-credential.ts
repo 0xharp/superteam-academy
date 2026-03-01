@@ -73,7 +73,7 @@ app.post("/", authMiddleware, async (c) => {
         coursesCompleted,
         new BN(totalXp),
       )
-      .accountsStrict({
+      .accountsPartial({
         config: configPDA,
         course: coursePDA,
         enrollment: enrollmentPDA,

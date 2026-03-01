@@ -98,3 +98,38 @@ export interface UpgradeCredentialResponse {
   signature: string;
   credentialAsset: string;
 }
+
+export interface AwardAchievementRequest {
+  achievementId: string;
+  recipientWallet: string;
+}
+
+export interface AwardAchievementResponse {
+  success: boolean;
+  signature: string;
+  asset: string;
+}
+
+export interface CreateAchievementTypeRequest {
+  achievementId: string;
+  name: string;
+  metadataUri: string;
+  maxSupply: number;
+  xpReward: number;
+}
+
+export interface CreateAchievementTypeResponse {
+  success: boolean;
+  signature: string;
+  achievementTypePDA: string;
+  collectionAddress: string;
+}
+
+export interface DeactivateAchievementTypeRequest {
+  achievementId: string;
+}
+
+export interface DeactivateAchievementTypeResponse {
+  success: boolean;
+  signature: string;
+}

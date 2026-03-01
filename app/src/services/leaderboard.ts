@@ -174,10 +174,14 @@ class SupabaseLeaderboardService implements LeaderboardService {
 
     const transactionAt = new Date(record.timestamp * 1000).toISOString();
 
+    const source = record.coursePda.startsWith("ach:")
+      ? "achievement"
+      : "onchain_sync";
+
     const { error } = await this.db.from("xp_transactions").insert({
       user_id: profile.id,
       amount: record.amount,
-      source: "onchain_sync",
+      source,
       course_pda: record.coursePda,
       tx_signature: record.signature,
       transaction_at: transactionAt,

@@ -1,0 +1,14 @@
+{
+  "name": "Challenge Champion",
+  "symbol": "SACAD",
+  "description": "Awarded for completing 50 daily challenges on Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Challenge Champion" },
+    { "trait_type": "Category", "value": "Progress" },
+    { "trait_type": "XP Reward", "value": "400" },
+    { "trait_type": "Rarity", "value": "Epic" }
+  ],
+  "properties": { "category": "achievement" }
+}

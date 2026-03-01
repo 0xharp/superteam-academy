@@ -1,0 +1,14 @@
+{
+  "name": "Early Adopter",
+  "symbol": "SACAD",
+  "description": "Awarded to the first 100 users of Superteam Academy.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Early Adopter" },
+    { "trait_type": "Category", "value": "Special" },
+    { "trait_type": "XP Reward", "value": "250" },
+    { "trait_type": "Rarity", "value": "Rare" }
+  ],
+  "properties": { "category": "achievement" }
+}

@@ -31,10 +31,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "achievements") {
+    const walletParam = req.nextUrl.searchParams.get("wallet");
+    const walletAddress = walletParam || session.walletAddress || undefined;
     const achievements = await gamificationService.getAchievements(
       session.user.id,
+      walletAddress,
     );
     return NextResponse.json(achievements);
+  }
+
+  if (type === "eligible") {
+    const { getAchievementChecker } = await import("@/services/achievement-checker");
+    const checker = getAchievementChecker();
+    const eligible = await checker.checkEligibility(session.user.id);
+    return NextResponse.json(eligible);
   }
 
   if (type === "history") {
@@ -63,6 +73,60 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json(enriched);
+  }
+
+  return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+
+  if (body.type === "claim-achievement") {
+    const { achievementIndex } = body;
+    if (typeof achievementIndex !== "number") {
+      return NextResponse.json({ error: "Missing achievementIndex" }, { status: 400 });
+    }
+
+    const walletAddress = session.walletAddress;
+    if (!walletAddress) {
+      return NextResponse.json(
+        { error: "Wallet required to claim achievements on-chain" },
+        { status: 400 },
+      );
+    }
+
+    // Check eligibility
+    const { getAchievementChecker } = await import("@/services/achievement-checker");
+    const checker = getAchievementChecker();
+    const eligible = await checker.checkEligibility(session.user.id);
+
+    // Bug Hunter (9) is admin-only, skip eligibility check for it
+    if (achievementIndex !== 9 && !eligible.includes(achievementIndex)) {
+      return NextResponse.json(
+        { error: "Not eligible for this achievement" },
+        { status: 400 },
+      );
+    }
+
+    const result = await gamificationService.claimAchievement(
+      session.user.id,
+      achievementIndex,
+      walletAddress,
+    );
+
+    if (result && "success" in result) {
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      return NextResponse.json(result);
+    }
+
+    return NextResponse.json({ success: true });
   }
 
   return NextResponse.json({ error: "Invalid type" }, { status: 400 });

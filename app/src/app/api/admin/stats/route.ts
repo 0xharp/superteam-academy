@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/auth-guard";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { program } from "@/lib/solana/program";
+import { getXPMintSupply } from "@/lib/solana/on-chain";
 
 export async function GET() {
   const { error } = await requireAdmin();
@@ -18,13 +19,13 @@ export async function GET() {
     { count: totalUsers },
     { count: newUsersLast7d },
     allOnChainCourses,
-    { data: xpData },
+    totalXpDistributed,
     { data: activeTxRows },
   ] = await Promise.all([
     db.from("profiles").select("*", { count: "exact", head: true }),
     db.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
     program.account.course.all(),
-    db.from("xp_transactions").select("amount"),
+    getXPMintSupply(),
     db
       .from("xp_transactions")
       .select("user_id")
@@ -32,8 +33,6 @@ export async function GET() {
   ]);
 
   const activeCourses = allOnChainCourses.filter((c) => c.account.isActive);
-
-  const totalXpDistributed = xpData?.reduce((sum, row) => sum + (row.amount ?? 0), 0) ?? 0;
 
   const activeUserIds = new Set((activeTxRows ?? []).map((r) => r.user_id));
 

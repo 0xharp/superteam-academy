@@ -12,6 +12,9 @@ import updateCourse from "./routes/update-course.js";
 import credentialMetadata from "./routes/credential-metadata.js";
 import trackStats from "./routes/track-stats.js";
 import createTrackCollection from "./routes/create-track-collection.js";
+import awardAchievement from "./routes/award-achievement.js";
+import createAchievementType from "./routes/create-achievement-type.js";
+import deactivateAchievementType from "./routes/deactivate-achievement-type.js";
 
 const app = new Hono();
 
@@ -36,6 +39,9 @@ app.route("/update-course", updateCourse);
 app.route("/credential-metadata", credentialMetadata);
 app.route("/track-stats", trackStats);
 app.route("/admin/create-track-collection", createTrackCollection);
+app.route("/award-achievement", awardAchievement);
+app.route("/admin/create-achievement-type", createAchievementType);
+app.route("/admin/deactivate-achievement-type", deactivateAchievementType);
 
 app.onError((err, c) => {
   console.error(`[${c.req.method}] ${c.req.url}`, err);

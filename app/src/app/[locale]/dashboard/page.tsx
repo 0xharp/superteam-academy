@@ -3,22 +3,23 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePlayerStats } from "@/hooks/use-player-stats";
 import { useCoursesCompleted } from "@/hooks/use-courses-completed";
 import { RentReclaimBanner } from "@/components/dashboard/rent-reclaim-banner";
+import { DailyChallengeCard } from "@/components/dashboard/daily-challenge-card";
+import { AchievementGrid } from "@/components/dashboard/achievement-grid";
 import { StatsBar } from "@/components/stats-bar";
 import type { Achievement, XPTransaction } from "@/types/gamification";
 import {
   Star,
   Flame,
   BookOpen,
-  Target,
   ChevronRight,
   Calendar,
   Award,
@@ -28,9 +29,22 @@ export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tc = useTranslations("common");
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Redirect unauthenticated users to sign-in
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      const locale = pathname.split("/")[1] || "en";
+      router.replace(`/${locale}/auth/signin`);
+    }
+  }, [status, router, pathname]);
+
+  // Resolve wallet: undefined while session loading, null if no wallet, string if linked
+  const walletAddress = status === "loading" ? undefined : (session?.walletAddress ?? null);
 
   // On-chain XP, level, streak via shared hook
-  const playerStats = usePlayerStats(session?.walletAddress);
+  const playerStats = usePlayerStats(walletAddress);
 
   // Courses completed (credentials + finalized enrollments) via shared hook
   const {
@@ -39,12 +53,61 @@ export default function DashboardPage() {
     enrollments,
     loading: loadingCoursesCompleted,
     loadingEnrollments,
-  } = useCoursesCompleted(session?.walletAddress);
+  } = useCoursesCompleted(walletAddress);
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [eligible, setEligible] = useState<number[]>([]);
   const [activity, setActivity] = useState<XPTransaction[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(true);
+
+  // Load achievements + XP history from API
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user) {
+      if (status !== "loading") {
+        setLoadingAchievements(false);
+        setLoadingActivity(false);
+      }
+      return;
+    }
+
+    Promise.all([
+      fetch("/api/gamification?type=achievements").then((r) => r.json()),
+      fetch("/api/gamification?type=eligible").then((r) => r.json()),
+    ])
+      .then(([achData, eligibleData]) => {
+        if (Array.isArray(achData)) setAchievements(achData);
+        if (Array.isArray(eligibleData)) setEligible(eligibleData);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAchievements(false));
+
+    fetch("/api/gamification?type=history&limit=5")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setActivity(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingActivity(false));
+
+  }, [session, status]);
+
+  // Show skeleton while auth is resolving or redirecting
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <div className="grid gap-4 sm:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const enrolledCourses = allCourses
     .filter((c) => c.courseId && enrollments.some((e) => e.courseId === c.courseId))
@@ -62,45 +125,6 @@ export default function DashboardPage() {
     if (!isFinalized) return [];
     return [{ courseId: c.courseId, title: c.title, isFinalized }];
   });
-
-  // Load achievements + XP history from API
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session?.user) {
-      setLoadingAchievements(false);
-      setLoadingActivity(false);
-      return;
-    }
-
-    fetch("/api/gamification?type=achievements")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setAchievements(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingAchievements(false));
-
-    fetch("/api/gamification?type=history&limit=5")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setActivity(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingActivity(false));
-
-  }, [session, status]);
-
-  const displayAchievements =
-    achievements.length > 0
-      ? achievements.slice(0, 6)
-      : [
-          { id: 0, name: "First Steps", icon: "footprints", category: "progress" as const, xpReward: 50, unlocked: false },
-          { id: 3, name: "Week Warrior", icon: "flame", category: "streak" as const, xpReward: 100, unlocked: false },
-          { id: 1, name: "Course Completer", icon: "graduation-cap", category: "progress" as const, xpReward: 200, unlocked: false },
-          { id: 2, name: "Speed Runner", icon: "zap", category: "progress" as const, xpReward: 500, unlocked: false },
-          { id: 6, name: "Rust Rookie", icon: "code", category: "skill" as const, xpReward: 150, unlocked: false },
-          { id: 8, name: "Early Adopter", icon: "star", category: "special" as const, xpReward: 250, unlocked: false },
-        ];
 
   const streak = playerStats.streak;
 
@@ -176,7 +200,7 @@ export default function DashboardPage() {
           xp={playerStats.xp}
           streak={streak?.currentStreak ?? 0}
           coursesCompleted={coursesCompleted}
-          loadingStats={playerStats.loading || status === "loading"}
+          loadingStats={playerStats.loading}
           loadingCourses={loadingCoursesCompleted}
           variant="cards"
         />
@@ -340,26 +364,7 @@ export default function DashboardPage() {
         {/* Right column */}
         <div className="space-y-8">
           {/* Daily Challenge */}
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-gold/5">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">{t("dailyChallenge")}</h3>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                What is the maximum theoretical TPS of Solana?
-              </p>
-              <div className="mt-4 flex items-center justify-between">
-                <Badge variant="secondary">Quiz</Badge>
-                <span className="text-sm font-medium text-primary">
-                  50 {tc("xp")}
-                </span>
-              </div>
-              <Button className="mt-4 w-full" size="sm">
-                {t("startChallenge")}
-              </Button>
-            </CardContent>
-          </Card>
+          <DailyChallengeCard />
 
           {/* Achievements */}
           <Card>
@@ -370,36 +375,11 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {loadingAchievements ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="aspect-square rounded-lg" />
-                  ))}
-                </div>
-              ) : null}
-              <div className={`grid grid-cols-3 gap-3 ${loadingAchievements ? "hidden" : ""}`}>
-                {displayAchievements.map((ach) => (
-                  <div
-                    key={ach.id}
-                    className={`flex flex-col items-center gap-1 rounded-lg p-3 text-center ${
-                      ach.unlocked ? "bg-primary/10" : "bg-muted opacity-50"
-                    }`}
-                  >
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        ach.unlocked
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted-foreground/20"
-                      }`}
-                    >
-                      <Award className="h-5 w-5" />
-                    </div>
-                    <span className="text-[10px] font-medium leading-tight">
-                      {ach.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <AchievementGrid
+                achievements={achievements}
+                eligible={eligible}
+                loading={loadingAchievements}
+              />
             </CardContent>
           </Card>
 

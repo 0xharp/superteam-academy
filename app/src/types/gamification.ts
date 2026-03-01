@@ -10,6 +10,7 @@ export interface StreakData {
 
 export interface Achievement {
   id: number;
+  achievementId: string;
   name: string;
   description: string;
   icon: string;
@@ -30,6 +31,7 @@ export interface XPTransaction {
     | "streak"
     | "achievement"
     | "daily_first"
+    | "daily_challenge"
     | "onchain_sync";
   sourceId?: string;
   courseName?: string;

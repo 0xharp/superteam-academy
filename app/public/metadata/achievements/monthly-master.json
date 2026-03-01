@@ -1,0 +1,14 @@
+{
+  "name": "Monthly Master",
+  "symbol": "SACAD",
+  "description": "Awarded for maintaining a 30-day learning streak.",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Monthly Master" },
+    { "trait_type": "Category", "value": "Streak" },
+    { "trait_type": "XP Reward", "value": "300" },
+    { "trait_type": "Rarity", "value": "Rare" }
+  ],
+  "properties": { "category": "achievement" }
+}

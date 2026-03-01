@@ -1,0 +1,14 @@
+{
+  "name": "Social Butterfly",
+  "symbol": "SACAD",
+  "description": "Awarded for connecting all social accounts (Twitter, GitHub, Discord).",
+  "image": "https://academy.superteam.fun/images/achievements/sample.png",
+  "external_url": "https://academy.superteam.fun",
+  "attributes": [
+    { "trait_type": "Achievement", "value": "Social Butterfly" },
+    { "trait_type": "Category", "value": "Special" },
+    { "trait_type": "XP Reward", "value": "100" },
+    { "trait_type": "Rarity", "value": "Common" }
+  ],
+  "properties": { "category": "achievement" }
+}

@@ -2,6 +2,7 @@ import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 
 const connection = new Connection(
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? clusterApiUrl("devnet"),
+  "confirmed",
 );
 
 const PROGRAM_ID = new PublicKey(
@@ -51,6 +52,20 @@ export function getAchievementTypePDA(achievementId: number): [PublicKey, number
   );
 }
 
+export function getAchievementReceiptPDA(
+  achievementId: string,
+  recipient: PublicKey,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("achievement_receipt"),
+      Buffer.from(achievementId),
+      recipient.toBuffer(),
+    ],
+    PROGRAM_ID,
+  );
+}
+
 export function getCredentialPDA(
   learner: PublicKey,
   trackId: number,
@@ -68,6 +83,17 @@ export function getCredentialPDA(
 export async function getSOLBalance(address: PublicKey): Promise<number> {
   const balance = await connection.getBalance(address);
   return balance / 1e9;
+}
+
+export async function getXPMintSupply(): Promise<number> {
+  try {
+    const { TOKEN_2022_PROGRAM_ID } = await import("@solana/spl-token");
+    const { getMint } = await import("@solana/spl-token");
+    const mint = await getMint(connection, XP_MINT, "confirmed", TOKEN_2022_PROGRAM_ID);
+    return Number(mint.supply);
+  } catch {
+    return 0;
+  }
 }
 
 export async function getXPBalance(owner: PublicKey): Promise<number> {
