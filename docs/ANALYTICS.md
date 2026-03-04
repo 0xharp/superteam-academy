@@ -181,73 +181,46 @@ Events are sent via `gtag("event", name, properties)` inside `trackEvent()`.
 
 ---
 
-## Dashboards
+## Dashboards & Screenshots
 
 ### Google Analytics 4
 
-<!-- SCREENSHOT: GA4 Realtime Overview
-     Location: analytics.google.com → Reports → Realtime
-     Shows: Active users, events per minute, top events firing -->
+**Realtime Overview** — analytics.google.com → Reports → Realtime
 
-<!-- SCREENSHOT: GA4 Events Report
-     Location: analytics.google.com → Reports → Engagement → Events
-     Shows: All 22 custom events with event count, users, and revenue -->
+![GA4 Realtime Overview](screenshots/ga4_realtime_overview.png)
 
-<!-- SCREENSHOT: GA4 Conversions
-     Location: analytics.google.com → Admin → Events → (mark as conversion)
-     Shows: enrollment, course_complete, achievement_unlocked marked as conversions -->
+**Events Report** — analytics.google.com → Reports → Engagement → Events
 
-<!-- SCREENSHOT: GA4 User Journey Funnel
-     Location: analytics.google.com → Explore → Funnel Exploration
-     Funnel: page_view → course_view → enrollment → lesson_start → lesson_complete → course_complete
-     Shows: Drop-off rates between each step -->
+![GA4 Events Report](screenshots/ga4_events_report.png)
+
+**User Journey Funnel** — analytics.google.com → Explore → Funnel Exploration
+
+![GA4 User Funnel](screenshots/ga4_user_funnel.png)
 
 ### PostHog
 
-<!-- SCREENSHOT: PostHog Live Events
-     Location: PostHog → Activity → Live Events
-     Shows: Real-time stream of all events with properties -->
+**Live Events** — PostHog → Activity → Live Events
 
-<!-- SCREENSHOT: PostHog Heatmap
-     Location: PostHog → Product Analytics → Heatmaps → select any page URL
-     Shows: Click density overlay on the selected page -->
+![PostHog Live Events](screenshots/posthog_live_events.png)
 
-<!-- SCREENSHOT: PostHog Funnel
-     Location: PostHog → Product Analytics → Funnels
-     Funnel: course_view → enrollment → lesson_start → lesson_complete → course_complete
-     Shows: Conversion rates between steps -->
+**Heatmap** — See [setup guide](#posthog-heatmap-setup) below
 
-<!-- SCREENSHOT: PostHog Dashboard
-     Location: PostHog → Dashboards → (create new)
-     Suggested widgets:
-       - Unique users (daily)
-       - enrollment count (weekly trend)
-       - lesson_complete count (weekly trend)
-       - challenge_pass vs challenge_fail ratio
-       - achievement_unlocked count
-       - streak_broken count -->
+<!-- SCREENSHOT: posthog_heatmap.png — Add after generating heatmap data -->
 
-<!-- SCREENSHOT: PostHog Session Recording (optional)
-     Location: PostHog → Product Analytics → Recordings
-     Shows: Recorded user session with event timeline -->
+**Funnel** — See [setup guide](#posthog-funnel-setup) below
+
+<!-- SCREENSHOT: posthog_funnel.png — Add after creating funnel -->
+
+**Dashboard** — See [setup guide](#posthog-dashboard-setup) below
+
+<!-- SCREENSHOT: posthog_dashboard.png — Add after creating dashboard -->
 
 ### Sentry
 
-<!-- SCREENSHOT: Sentry Issues List
-     Location: sentry.io → Issues
-     Shows: Grouped error list with frequency, affected users -->
-
-<!-- SCREENSHOT: Sentry Issue Detail
-     Location: sentry.io → Issues → (click any issue)
-     Shows: Stack trace, breadcrumbs, user context, device info -->
-
-<!-- SCREENSHOT: Sentry Performance
-     Location: sentry.io → Performance
-     Shows: Transaction durations, p50/p95/p99 latencies -->
-
-<!-- SCREENSHOT: Sentry Alerts
-     Location: sentry.io → Alerts → (create alert rule)
-     Shows: Alert configuration for new errors or error spikes -->
+<!-- SCREENSHOT: sentry_issues.png — Add screenshot of Issues tab -->
+<!-- SCREENSHOT: sentry_issue_detail.png — Add screenshot of an issue detail -->
+<!-- SCREENSHOT: sentry_performance.png — Add screenshot of Performance tab -->
+<!-- SCREENSHOT: sentry_alerts.png — Add screenshot of alert rules -->
 
 ---
 
@@ -308,3 +281,108 @@ export function trackEvent(event: EventName, properties?: Record<string, unknown
 3. Update this document with the event details
 4. Verify in dev console: `[Analytics] your_event { ... }`
 5. Verify in PostHog Live Events and GA4 Realtime after deploying
+
+---
+
+## PostHog Setup Guides
+
+These features are empty until you configure them. They require event data to already be flowing in (which it is — you can see events in Live Events). Follow each guide below.
+
+### PostHog Heatmap Setup
+
+Heatmaps need the **PostHog Toolbar** enabled and real page visits to have been captured.
+
+1. Go to your PostHog project
+2. Click the **Toolbar** launcher (rocket icon in bottom-left, or go to project settings and look for "Toolbar")
+3. If you don't see the Toolbar icon:
+   - Go to **Settings** (gear icon) → **Project Settings**
+   - Scroll to **"Toolbar"** section → make sure it's **Enabled**
+   - Add your site URL (e.g. `https://academy.superteam.fun`) to **"Authorized Toolbar URLs"**
+4. Click **"Launch Toolbar"** — this opens your site with the PostHog toolbar overlay
+5. In the toolbar floating on your site, click the **heatmap icon** (fire/flame icon)
+6. You'll see a click heatmap overlaid on the current page
+7. Navigate to different pages to see heatmaps per page
+8. Take a screenshot for `docs/screenshots/posthog_heatmap.png`
+
+**Note:** Heatmaps are generated from `autocapture` click events. If you just deployed, browse around your site for a few minutes first to generate data. Heatmaps won't show data from before `enable_heatmaps: true` was added.
+
+**Alternative (no Toolbar):**
+- PostHog has been rolling out a **Heatmaps** tab under **Product Analytics** in newer versions
+- If you see it: go to **Product Analytics → Heatmaps**, enter a page URL, and view
+- If you don't see it: your PostHog plan/version may not include it — use the Toolbar method above
+
+### PostHog Funnel Setup
+
+Funnels must be manually created — PostHog doesn't auto-generate them.
+
+1. Go to **Product Analytics** → **New Insight** (or click **"+ New Insight"** button)
+2. Change the insight type from **"Trends"** to **"Funnels"** (dropdown at the top)
+3. Add funnel steps (click **"Add step"** for each):
+   - Step 1: `course_view`
+   - Step 2: `enrollment`
+   - Step 3: `lesson_start`
+   - Step 4: `lesson_complete`
+   - Step 5: `course_complete`
+4. Set the **conversion window** to **30 days** (top-right dropdown)
+5. Click **"Calculate"** to see the funnel
+6. You'll see conversion rates and drop-off between each step
+7. Click **"Save"** → name it "Learning Funnel"
+8. Take a screenshot for `docs/screenshots/posthog_funnel.png`
+
+**Second funnel to create (Challenge funnel):**
+1. New Insight → Funnels
+2. Steps:
+   - Step 1: `challenge_attempt`
+   - Step 2: `challenge_pass`
+3. Save as "Challenge Pass Rate"
+
+### PostHog Dashboard Setup
+
+Dashboards are custom — you build them from saved insights.
+
+1. Go to **Dashboards** → click **"+ New Dashboard"**
+2. Name it "Superteam Academy Overview"
+3. Click **"Add insight"** and create each one (or add previously saved insights):
+
+**Insight 1 — Daily Active Users:**
+- Type: **Trends**
+- Event: `page_view` → count unique users
+- Date range: Last 30 days
+- Display: Line chart
+
+**Insight 2 — Enrollments (weekly):**
+- Type: **Trends**
+- Event: `enrollment` → total count
+- Group by: Week
+- Date range: Last 90 days
+
+**Insight 3 — Lesson Completions (weekly):**
+- Type: **Trends**
+- Event: `lesson_complete` → total count
+- Group by: Week
+- Date range: Last 90 days
+
+**Insight 4 — Challenge Pass vs Fail:**
+- Type: **Trends**
+- Event 1: `challenge_pass` → total count
+- Event 2: `challenge_fail` → total count
+- Display: Bar chart
+- Date range: Last 30 days
+
+**Insight 5 — Achievements Claimed:**
+- Type: **Trends**
+- Event: `achievement_unlocked` → total count
+- Group by: Week
+
+**Insight 6 — Streak Health:**
+- Type: **Trends**
+- Event 1: `streak_milestone` → total count
+- Event 2: `streak_broken` → total count
+- Display: Line chart
+- Date range: Last 30 days
+
+4. Arrange the tiles on the dashboard by dragging
+5. Click **"Save"**
+6. Take a screenshot for `docs/screenshots/posthog_dashboard.png`
+
+**Tip:** If insights show "No data" — that's normal if the events haven't fired yet in production. Browse the site, complete a lesson, change theme/language to generate some events first.

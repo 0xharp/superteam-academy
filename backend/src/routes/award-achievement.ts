@@ -15,7 +15,10 @@ import {
 } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { AwardAchievementRequest } from "../types.js";
+import type {
+  AwardAchievementRequest,
+  AwardAchievementResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -34,15 +37,21 @@ app.post("/", authMiddleware, async (c) => {
   const [configPDA] = getConfigPDA();
   const [minterRolePDA] = getMinterRolePDA(backendSigner.publicKey);
   const [achievementTypePDA] = getAchievementTypePDA(achievementId);
-  const [achievementReceiptPDA] = getAchievementReceiptPDA(achievementId, recipient);
+  const [achievementReceiptPDA] = getAchievementReceiptPDA(
+    achievementId,
+    recipient,
+  );
 
   // Fetch achievement type to get collection address
   let achievementType;
   try {
-    achievementType = await program.account.achievementType.fetch(achievementTypePDA);
+    achievementType =
+      await program.account.achievementType.fetch(achievementTypePDA);
   } catch {
     return c.json(
-      { error: `AchievementType "${achievementId}" not created on-chain yet. Create it via admin panel first.` },
+      {
+        error: `AchievementType "${achievementId}" not created on-chain yet. Create it via admin panel first.`,
+      },
       404,
     );
   }
@@ -91,7 +100,7 @@ app.post("/", authMiddleware, async (c) => {
 
   const signature = await builder.rpc();
 
-  return c.json({
+  return c.json<AwardAchievementResponse>({
     success: true,
     signature,
     asset: assetKeypair.publicKey.toBase58(),

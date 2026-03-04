@@ -51,16 +51,6 @@ export async function getTrackCollection(trackId: number): Promise<PublicKey> {
   return new PublicKey(track.collectionAddress);
 }
 
-export async function getTrackName(trackId: number): Promise<string> {
-  const tracks = await fetchTracks();
-  const track = tracks.find((t) => t.trackId === trackId);
-  return track?.name ?? `Track ${trackId}`;
-}
-
 export async function getTrackImageUrl(_trackId: number): Promise<string> {
   return "/images/credentials/sample.png";
-}
-
-export async function getAllTracks(): Promise<TrackInfo[]> {
-  return fetchTracks();
 }

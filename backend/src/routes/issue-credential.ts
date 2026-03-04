@@ -10,7 +10,10 @@ import { program, backendSigner, MPL_CORE_PROGRAM_ID } from "../lib/program.js";
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getTrackCollection } from "../lib/tracks.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { IssueCredentialRequest } from "../types.js";
+import type {
+  IssueCredentialRequest,
+  IssueCredentialResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -87,7 +90,7 @@ app.post("/", authMiddleware, async (c) => {
     return c.json({ error: message }, 500);
   }
 
-  return c.json({
+  return c.json<IssueCredentialResponse>({
     success: true,
     signature,
     credentialAsset: assetKeypair.publicKey.toBase58(),

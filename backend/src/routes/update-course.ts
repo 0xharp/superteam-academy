@@ -3,15 +3,7 @@ import { SendTransactionError } from "@solana/web3.js";
 import { program, authoritySigner } from "../lib/program.js";
 import { getConfigPDA, getCoursePDA } from "../lib/pda.js";
 import { authMiddleware } from "../middleware/auth.js";
-
-interface UpdateCourseRequest {
-  courseId: string;
-  newIsActive?: boolean;
-  newXpPerLesson?: number;
-  newCreatorRewardXp?: number;
-  newMinCompletionsForReward?: number;
-  newContentTxId?: string;
-}
+import type { UpdateCourseRequest, UpdateCourseResponse } from "../types.js";
 
 const app = new Hono();
 
@@ -62,7 +54,7 @@ app.post("/", authMiddleware, async (c) => {
     return c.json({ error: message }, 500);
   }
 
-  return c.json({ success: true, signature });
+  return c.json<UpdateCourseResponse>({ success: true, signature });
 });
 
 export default app;

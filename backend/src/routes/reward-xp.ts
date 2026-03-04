@@ -10,7 +10,7 @@ import {
 import { getConfigPDA, getMinterRolePDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { RewardXpRequest } from "../types.js";
+import type { RewardXpRequest, RewardXpResponse } from "../types.js";
 
 const app = new Hono();
 
@@ -53,7 +53,7 @@ app.post("/", authMiddleware, async (c) => {
 
   const signature = await builder.rpc();
 
-  return c.json({
+  return c.json<RewardXpResponse>({
     success: true,
     signature,
   });

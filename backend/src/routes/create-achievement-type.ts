@@ -8,7 +8,10 @@ import {
 } from "../lib/program.js";
 import { getConfigPDA, getAchievementTypePDA } from "../lib/pda.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { CreateAchievementTypeRequest } from "../types.js";
+import type {
+  CreateAchievementTypeRequest,
+  CreateAchievementTypeResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -18,7 +21,10 @@ app.post("/", authMiddleware, async (c) => {
 
   if (!achievementId || !name || !metadataUri || xpReward == null) {
     return c.json(
-      { error: "Missing required fields: achievementId, name, metadataUri, xpReward" },
+      {
+        error:
+          "Missing required fields: achievementId, name, metadataUri, xpReward",
+      },
       400,
     );
   }
@@ -49,7 +55,7 @@ app.post("/", authMiddleware, async (c) => {
     .signers([authoritySigner, backendSigner, collectionKeypair])
     .rpc();
 
-  return c.json({
+  return c.json<CreateAchievementTypeResponse>({
     success: true,
     signature,
     achievementTypePDA: achievementTypePDA.toBase58(),

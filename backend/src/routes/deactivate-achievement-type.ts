@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { program, authoritySigner, backendSigner } from "../lib/program.js";
 import { getConfigPDA, getAchievementTypePDA } from "../lib/pda.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { DeactivateAchievementTypeRequest } from "../types.js";
+import type {
+  DeactivateAchievementTypeRequest,
+  DeactivateAchievementTypeResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -27,7 +30,7 @@ app.post("/", authMiddleware, async (c) => {
     .signers([authoritySigner])
     .rpc();
 
-  return c.json({
+  return c.json<DeactivateAchievementTypeResponse>({
     success: true,
     signature,
   });

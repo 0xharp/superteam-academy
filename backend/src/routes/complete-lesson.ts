@@ -9,7 +9,10 @@ import {
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { CompleteLessonRequest } from "../types.js";
+import type {
+  CompleteLessonRequest,
+  CompleteLessonResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -133,7 +136,7 @@ app.post("/", authMiddleware, async (c) => {
     }
   }
 
-  return c.json({
+  return c.json<CompleteLessonResponse>({
     success: true,
     signature,
     xpEarned: courseAccount.xpPerLesson,

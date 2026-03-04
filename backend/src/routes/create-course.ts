@@ -4,20 +4,7 @@ import { BN } from "@coral-xyz/anchor";
 import { program, authoritySigner } from "../lib/program.js";
 import { getConfigPDA, getCoursePDA } from "../lib/pda.js";
 import { authMiddleware } from "../middleware/auth.js";
-
-interface CreateCourseRequest {
-  courseId: string;
-  creator: string;
-  lessonCount: number;
-  difficulty: number;
-  xpPerLesson: number;
-  trackId: number;
-  trackLevel: number;
-  prerequisiteCourseId?: string | null;
-  creatorRewardXp: number;
-  minCompletionsForReward: number;
-  contentTxId: string;
-}
+import type { CreateCourseRequest, CreateCourseResponse } from "../types.js";
 
 const app = new Hono();
 
@@ -95,7 +82,11 @@ app.post("/", authMiddleware, async (c) => {
     return c.json({ error: message }, 500);
   }
 
-  return c.json({ success: true, signature, coursePDA: coursePDA.toBase58() });
+  return c.json<CreateCourseResponse>({
+    success: true,
+    signature,
+    coursePDA: coursePDA.toBase58(),
+  });
 });
 
 export default app;

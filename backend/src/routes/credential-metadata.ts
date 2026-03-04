@@ -16,8 +16,6 @@ app.get("/", async (c) => {
   const totalXp = parseInt(c.req.query("totalXp") ?? "0", 10);
   const completedCourseIds = c.req.query("completedCourseIds") ?? "";
 
-
-
   let imageUrl: string;
   try {
     imageUrl = await getTrackImageUrl(trackId);

@@ -9,16 +9,10 @@ import { program, backendSigner, MPL_CORE_PROGRAM_ID } from "../lib/program.js";
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getTrackCollection } from "../lib/tracks.js";
 import { authMiddleware } from "../middleware/auth.js";
-
-interface UpgradeCredentialRequest {
-  courseId: string;
-  learnerWallet: string;
-  credentialAsset: string;
-  credentialName: string;
-  metadataUri: string;
-  coursesCompleted: number;
-  totalXp: number;
-}
+import type {
+  UpgradeCredentialRequest,
+  UpgradeCredentialResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -96,7 +90,7 @@ app.post("/", authMiddleware, async (c) => {
     return c.json({ error: message }, 500);
   }
 
-  return c.json({
+  return c.json<UpgradeCredentialResponse>({
     success: true,
     signature,
     credentialAsset: asset.toBase58(),

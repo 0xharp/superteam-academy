@@ -9,7 +9,10 @@ import {
 import { getConfigPDA, getCoursePDA, getEnrollmentPDA } from "../lib/pda.js";
 import { getOrCreateATA } from "../lib/ata.js";
 import { authMiddleware } from "../middleware/auth.js";
-import type { FinalizeCourseRequest } from "../types.js";
+import type {
+  FinalizeCourseRequest,
+  FinalizeCourseResponse,
+} from "../types.js";
 
 const app = new Hono();
 
@@ -79,7 +82,7 @@ app.post("/", authMiddleware, async (c) => {
     return c.json({ error: message }, 500);
   }
 
-  return c.json({
+  return c.json<FinalizeCourseResponse>({
     success: true,
     signature,
   });
