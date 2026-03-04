@@ -33,6 +33,12 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Academy" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="theme-color" content="#ffd23f" />
+        <meta name="msapplication-TileColor" content="#1b231d" />
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>

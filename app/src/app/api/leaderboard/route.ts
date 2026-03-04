@@ -7,11 +7,15 @@ export async function GET(req: NextRequest) {
     | "monthly"
     | "alltime";
   const courseId = req.nextUrl.searchParams.get("courseId") ?? undefined;
+  const source = req.nextUrl.searchParams.get("source") ?? undefined;
+  const achievementId = req.nextUrl.searchParams.get("achievementId") ?? undefined;
   const userId = req.nextUrl.searchParams.get("userId") ?? undefined;
 
   const { entries, lastSyncedAt } = await leaderboardService.getLeaderboard({
     timeframe,
     courseId,
+    source,
+    achievementId,
   });
 
   let userRank = -1;

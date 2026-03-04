@@ -18,6 +18,9 @@ export async function initPostHog() {
       person_profiles: "identified_only",
       capture_pageview: false, // We handle this manually
       capture_pageleave: true,
+      autocapture: true,
+      enable_heatmaps: true,
+      enable_recording_console_log: false,
     });
     posthogInstance = posthog;
     return posthog;

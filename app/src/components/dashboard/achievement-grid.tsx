@@ -3,34 +3,36 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Award, Check, Lock, Loader2 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Award, Check, Lock, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
+import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import type { Achievement } from "@/types/gamification";
 
 interface AchievementGridProps {
   achievements: Achievement[];
-  eligible: number[];
+  eligible: string[];
   loading: boolean;
 }
 
 export function AchievementGrid({ achievements, eligible, loading }: AchievementGridProps) {
   const t = useTranslations("gamification");
-  const tc = useTranslations("common");
-  const [claiming, setClaiming] = useState<number | null>(null);
-  const [claimed, setClaimed] = useState<Set<number>>(new Set());
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimed, setClaimed] = useState<Set<string>>(new Set());
 
-  async function handleClaim(achievementId: number) {
+  async function handleClaim(achievementId: string) {
     setClaiming(achievementId);
     try {
       const res = await fetch("/api/gamification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "claim-achievement", achievementIndex: achievementId }),
+        body: JSON.stringify({ type: "claim-achievement", achievementId }),
       });
 
       const data = await res.json();
       if (data.success) {
         setClaimed((prev) => new Set([...prev, achievementId]));
+        trackEvent(ANALYTICS_EVENTS.ACHIEVEMENT_UNLOCKED, { achievementId });
         toast.success(t("achievementClaimed"));
       } else {
         toast.error(data.error || t("claimFailed"));
@@ -43,7 +45,7 @@ export function AchievementGrid({ achievements, eligible, loading }: Achievement
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {Array.from({ length: 12 }).map((_, i) => (
           <Skeleton key={i} className="aspect-square rounded-lg" />
         ))}
@@ -52,24 +54,49 @@ export function AchievementGrid({ achievements, eligible, loading }: Achievement
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {[...achievements].sort((a, b) => a.name.localeCompare(b.name)).map((ach) => {
-        const isEligible = eligible.includes(ach.id) && !ach.unlocked && !claimed.has(ach.id);
-        const isUnlocked = ach.unlocked || claimed.has(ach.id);
-        const isClaiming = claiming === ach.id;
+        const isEligible = eligible.includes(ach.achievementId) && !ach.unlocked && !claimed.has(ach.achievementId);
+        const isUnlocked = ach.unlocked || claimed.has(ach.achievementId);
+        const isClaiming = claiming === ach.achievementId;
+        const isExhausted = ach.supplyExhausted && !isUnlocked;
 
         return (
           <div
-            key={ach.id}
+            key={ach.achievementId}
             className={`relative aspect-square flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-center transition-all ${
               isUnlocked
                 ? "bg-primary/10"
-                : isEligible
-                  ? "bg-primary/5 ring-2 ring-primary/40 ring-offset-1 ring-offset-background cursor-pointer"
-                  : "bg-muted opacity-50"
+                : isExhausted
+                  ? "bg-muted opacity-40"
+                  : isEligible
+                    ? "bg-primary/5 ring-2 ring-primary/40 ring-offset-1 ring-offset-background cursor-pointer"
+                    : "bg-muted opacity-50"
             }`}
-            onClick={isEligible && !isClaiming ? () => handleClaim(ach.id) : undefined}
+            onClick={isEligible && !isClaiming ? () => handleClaim(ach.achievementId) : undefined}
           >
+            {ach.criteria && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute top-1.5 right-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="w-56 text-xs">
+                  <p className="font-medium mb-1">{t("achievementCriteria")}</p>
+                  <p className="text-muted-foreground">{ach.criteria}</p>
+                  {ach.maxSupply > 0 && (
+                    <p className="mt-1.5 text-muted-foreground">
+                      {t("supplyInfo", { current: ach.currentSupply, max: ach.maxSupply })}
+                    </p>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-full ${
                 isUnlocked
@@ -93,6 +120,11 @@ export function AchievementGrid({ achievements, eligible, loading }: Achievement
             {isEligible && (
               <span className="text-[9px] font-medium text-primary">
                 {t("claimAchievement")}
+              </span>
+            )}
+            {isExhausted && (
+              <span className="text-[9px] text-muted-foreground">
+                {t("supplyExhausted", { current: ach.currentSupply, max: ach.maxSupply })}
               </span>
             )}
           </div>

@@ -52,7 +52,20 @@
     "status": "Estado",
     "actions": "Acciones",
     "active": "Activo",
-    "inactive": "Inactivo"
+    "inactive": "Inactivo",
+    "streakInfoTitle": "Reglas de Racha",
+    "streakInfoDesc": "Completa cualquier actividad que otorgue XP diariamente para mantener tu racha. Las rachas cuentan lecciones, desafios y logros.",
+    "streakInfoFreezes": "Congelamientos de racha restantes: {count}/3",
+    "streakInfoReplenish": "Los congelamientos se reponen a 3 en tu primera actividad de cada mes.",
+    "by": "por",
+    "walletConnected": "Billetera conectada!",
+    "walletLinkFailed": "Error al vincular billetera. Intenta de nuevo.",
+    "switchedProfile": "Ahora has iniciado sesion como \"{name}\" porque esta billetera ya estaba vinculada a ese perfil.",
+    "loadingChart": "Cargando grafico...",
+    "offlineMessage": "Estás sin conexión — algunas funciones pueden estar limitadas",
+    "levelShort": "Nv {level}",
+    "somethingWentWrong": "Algo salió mal",
+    "tryAgain": "Intentar de nuevo"
   },
   "landing": {
     "newCourse": "Nuevo Curso",
@@ -174,6 +187,17 @@
     "alreadyCompleted": "Ya Completado",
     "alreadyCompletedDescription": "Ya has obtenido credito por este curso."
   },
+  "enrollment": {
+    "transactionRejected": "Transaccion rechazada.",
+    "alreadyEnrolled": "Ya estas inscrito en este curso.",
+    "prerequisiteNotMet": "Debes completar el curso prerequisito primero.",
+    "courseNotActive": "Este curso no esta activo actualmente.",
+    "unenrollCooldown": "Debes esperar 24h despues de inscribirte para desinscribirte de un curso incompleto.",
+    "notEnrolled": "No estas inscrito en este curso.",
+    "walletNotConnected": "Billetera no conectada",
+    "enrolledConfirming": "Inscrito! Confirmando on-chain… Puede tardar 10-15 seg segun el lag del RPC…",
+    "enrollmentClosed": "Inscripcion cerrada."
+  },
   "lessons": {
     "content": "Contenido",
     "challenge": "Desafio",
@@ -194,7 +218,16 @@
     "backToCourse": "Volver al Curso",
     "enrollFirst": "Inscribete Primero",
     "enrollRequired": "Necesitas inscribirte en este curso antes de marcar lecciones como completadas.",
-    "askQuestion": "Hacer una Pregunta"
+    "askQuestion": "Hacer una Pregunta",
+    "courseComplete": "Curso Completado!",
+    "courseCompleteDescription": "Ve a la pagina del curso para recolectar tu credencial NFT y recuperar la renta.",
+    "rpcLagNote": "Si el boton de recolectar no aparece, actualiza la pagina despues de unos segundos — la indexacion del RPC puede tardar.",
+    "serverError": "No se pudo contactar el servidor. Verifica tu conexion.",
+    "testsPassedCount": "{passed}/{total} pruebas aprobadas",
+    "submitting": "Enviando...",
+    "markComplete": "Marcar como Completado (+{xp} {xpLabel})",
+    "running": "Ejecutando...",
+    "hideSolution": "Ocultar Solucion"
   },
   "dashboard": {
     "title": "Panel",
@@ -222,9 +255,23 @@
     "today": "Hoy",
     "best": "Mejor",
     "noActivityYet": "Sin actividad aun. Comienza un curso para ganar XP!",
+    "frozenDay": "Congelamiento usado",
+    "streakInfoTitle": "Reglas de Racha",
+    "streakInfoDesc": "Completa cualquier actividad que otorgue XP diariamente para mantener tu racha. Las rachas cuentan lecciones, desafios y logros.",
+    "streakInfoFreezes": "Congelamientos de racha restantes: {count}/3",
+    "streakInfoReplenish": "Los congelamientos se reponen a 3 en tu primera actividad de cada mes.",
     "startChallenge": "Iniciar Desafio",
     "linkWalletForActivity": "Conecta una billetera en Configuracion para ver tu actividad de XP.",
-    "recentXPActivity": "Actividad Reciente de XP"
+    "recentXPActivity": "Actividad Reciente de XP",
+    "justNow": "Recien",
+    "yesterday": "Ayer",
+    "hoursAgo": "hace {count}h",
+    "daysAgo": "hace {count}d",
+    "sourceLesson": "Leccion completada",
+    "sourceCourse": "Curso completado",
+    "sourceCreatorReward": "Recompensa de creador",
+    "sourceAchievement": "Logro desbloqueado",
+    "sourceReward": "Recompensa XP"
   },
   "profile": {
     "title": "Perfil",
@@ -246,7 +293,9 @@
     "verified": "Verificado",
     "shareProfile": "Compartir Perfil",
     "linkCopied": "Enlace del perfil copiado!",
-    "toNextLevel": "progreso al siguiente nivel"
+    "toNextLevel": "progreso al siguiente nivel",
+    "eligibleAchievements": "Tienes {count} logro(s) listos para reclamar!",
+    "goToDashboard": "Ir al Dashboard para reclamar"
   },
   "leaderboard": {
     "title": "Clasificacion",
@@ -268,7 +317,17 @@
     "signInToRefresh": "Iniciar Sesion para Actualizar Clasificacion",
     "lastSyncedOnChain": "Ultima actualizacion on-chain el {date}",
     "autoRefreshNotice": "La clasificacion se sincroniza automaticamente cada 24 horas.",
-    "nothingToRefresh": "Nada que actualizar - tus datos ya estan al dia!"
+    "nothingToRefresh": "Nada que actualizar - tus datos ya estan al dia!",
+    "allSources": "Todas las Fuentes",
+    "allAchievements": "Todos los Logros",
+    "sourceLessons": "Lecciones",
+    "sourceCourseCompletions": "Cursos Completados",
+    "sourceCreatorRewards": "Recompensas de Creador",
+    "sourceAchievements": "Logros",
+    "sourceXpRewards": "Recompensas XP",
+    "synced": "Clasificacion sincronizada con datos on-chain!",
+    "syncError": "Error de red al sincronizar",
+    "syncFailed": "Error al sincronizar clasificacion"
   },
   "settings": {
     "title": "Configuracion",
@@ -323,7 +382,8 @@
     "changeAvatar": "Cambiar Avatar",
     "uploadingAvatar": "Subiendo...",
     "avatarUpdated": "¡Avatar actualizado!",
-    "avatarTooLarge": "La imagen debe ser menor a 2MB"
+    "avatarTooLarge": "La imagen debe ser menor a 2MB",
+    "switchedProfile": "Ahora has iniciado sesion como \"{name}\" porque esta cuenta ya estaba vinculada a ese perfil."
   },
   "certificates": {
     "title": "Certificado de Finalizacion",
@@ -384,7 +444,10 @@
     "eligible": "Elegible",
     "locked": "Bloqueado",
     "claiming": "Reclamando...",
-    "claimFailed": "Error al reclamar logro"
+    "claimFailed": "Error al reclamar logro",
+    "supplyExhausted": "Stock agotado ({current}/{max} reclamados)",
+    "achievementCriteria": "Como obtener",
+    "supplyInfo": "{current}/{max} reclamados"
   },
   "community": {
     "title": "Comunidad",
@@ -534,7 +597,33 @@
     "achievementCreatedToast": "Logro creado on-chain. La tabla se actualizara automaticamente en ~15 segundos. Los logros auto-reclamables requieren cambios en achievement-checker.ts. Los logros manuales se pueden otorgar desde este panel.",
     "recipientUsername": "Nombre de usuario",
     "userNotFound": "Usuario no encontrado",
-    "noWalletLinked": "El usuario no tiene billetera vinculada"
+    "noWalletLinked": "El usuario no tiene billetera vinculada",
+    "actionFailed": "Error de red: {error}",
+    "courseActionSuccess": "Curso {action}do exitosamente",
+    "collectionCreatedToast": "Coleccion creada: {key}",
+    "collectionFailed": "Error al crear coleccion",
+    "achievementDeactivated": "Tipo de logro desactivado. La tabla se actualizara en ~15 segundos.",
+    "challengeDeleted": "Desafio eliminado",
+    "achievementAwarded": "Logro otorgado on-chain",
+    "challengeCreated": "Desafio creado",
+    "challengeUpdated": "Desafio actualizado",
+    "updateFailed": "Error al actualizar",
+    "operationFailed": "Error en la operacion",
+    "searchPlaceholder": "Buscar por nombre, email o usuario...",
+    "achievementIdPlaceholder": "ej. bug-hunter",
+    "metadataUriPlaceholder": "https://arweave.net/...",
+    "questionPlaceholder": "ej. Que es un PDA en Solana?",
+    "metadataUri": "URI de Metadatos",
+    "maxSupply": "Stock Maximo",
+    "xpReward": "Recompensa XP",
+    "award": "Otorgar",
+    "categoryFundamentals": "Fundamentos",
+    "categoryPrograms": "Programas",
+    "categoryTokens": "Tokens",
+    "categoryDeFi": "DeFi",
+    "categorySecurity": "Seguridad",
+    "categoryTooling": "Herramientas",
+    "categoryEcosystem": "Ecosistema"
   },
   "creator": {
     "title": "Panel del Creador",

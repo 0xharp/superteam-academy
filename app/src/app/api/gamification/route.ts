@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { gamificationService } from "@/services/gamification";
-import { PublicKey } from "@solana/web3.js";
+import { calculateLevel } from "@/types/gamification";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -17,15 +17,15 @@ export async function GET(req: NextRequest) {
     // XP is on-chain (Token-2022 ATA); streak is off-chain (Supabase)
     const [xp, streak] = await Promise.all([
       walletAddress
-        ? import("@/lib/solana/on-chain").then(({ getXPBalance }) =>
-            getXPBalance(new PublicKey(walletAddress)).catch(() => 0),
-        )
+        ? import("@/lib/solana/on-chain").then(async ({ getXPBalance }) => {
+            const { PublicKey } = await import("@solana/web3.js");
+            return getXPBalance(new PublicKey(walletAddress)).catch(() => 0);
+          })
         : Promise.resolve(0),
       gamificationService.getStreak(session.user.id),
     ]);
 
-    // Level derived from XP: floor(sqrt(xp / 100))
-    const level = Math.floor(Math.sqrt(xp / 100));
+    const level = calculateLevel(xp).level;
 
     return NextResponse.json({ xp, level, streak });
   }
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   if (type === "eligible") {
     const { getAchievementChecker } = await import("@/services/achievement-checker");
     const checker = getAchievementChecker();
-    const eligible = await checker.checkEligibility(session.user.id);
+    const eligible = await checker.checkEligibility(session.user.id, session.walletAddress ?? undefined);
     return NextResponse.json(eligible);
   }
 
@@ -57,19 +57,22 @@ export async function GET(req: NextRequest) {
       import("@/lib/courses").then(({ getCourseTitleMap }) => getCourseTitleMap()),
     ]);
 
-    // Resolve course_pda → course name by building a PDA → courseId reverse map
-    const { getCoursePDA } = await import("@/lib/solana/enrollments");
-    const pdaToTitle = new Map<string, string>();
-    for (const [courseId, title] of Object.entries(titleMap)) {
-      try {
-        const pda = getCoursePDA(courseId).toBase58();
-        pdaToTitle.set(pda, title);
-      } catch { /* skip invalid courseIds */ }
-    }
+    // Build achievement name map from on-chain data
+    let achievementNameMap = new Map<string, string>();
+    try {
+      const { program } = await import("@/lib/solana/program");
+      const achAccounts = await program.account.achievementType.all();
+      for (const a of achAccounts) {
+        achievementNameMap.set(a.account.achievementId, a.account.name);
+      }
+    } catch { /* fallback: no names */ }
 
     const enriched = history.map((tx) => ({
       ...tx,
-      courseName: tx.sourceId ? (pdaToTitle.get(tx.sourceId) ?? titleMap[tx.sourceId]) : undefined,
+      courseName: tx.courseId ? titleMap[tx.courseId] : undefined,
+      achievementName: tx.achievementId
+        ? achievementNameMap.get(tx.achievementId)
+        : undefined,
     }));
 
     return NextResponse.json(enriched);
@@ -87,9 +90,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   if (body.type === "claim-achievement") {
-    const { achievementIndex } = body;
-    if (typeof achievementIndex !== "number") {
-      return NextResponse.json({ error: "Missing achievementIndex" }, { status: 400 });
+    const { achievementId } = body;
+    if (typeof achievementId !== "string") {
+      return NextResponse.json({ error: "Missing achievementId" }, { status: 400 });
     }
 
     const walletAddress = session.walletAddress;
@@ -100,22 +103,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check eligibility
-    const { getAchievementChecker } = await import("@/services/achievement-checker");
-    const checker = getAchievementChecker();
-    const eligible = await checker.checkEligibility(session.user.id);
+    // Check eligibility — bug-hunter is admin-only, skip check
+    if (achievementId !== "bug-hunter") {
+      const { getAchievementChecker } = await import("@/services/achievement-checker");
+      const checker = getAchievementChecker();
+      const eligible = await checker.checkEligibility(session.user.id, walletAddress);
 
-    // Bug Hunter (9) is admin-only, skip eligibility check for it
-    if (achievementIndex !== 9 && !eligible.includes(achievementIndex)) {
-      return NextResponse.json(
-        { error: "Not eligible for this achievement" },
-        { status: 400 },
-      );
+      if (!eligible.includes(achievementId)) {
+        return NextResponse.json(
+          { error: "Not eligible for this achievement" },
+          { status: 400 },
+        );
+      }
     }
 
     const result = await gamificationService.claimAchievement(
       session.user.id,
-      achievementIndex,
+      achievementId,
       walletAddress,
     );
 
@@ -123,6 +127,7 @@ export async function POST(req: NextRequest) {
       if (!result.success) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
+      await gamificationService.recordActivity(session.user.id).catch(() => {});
       return NextResponse.json(result);
     }
 

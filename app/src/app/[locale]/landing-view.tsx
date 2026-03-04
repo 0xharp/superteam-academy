@@ -138,13 +138,21 @@ const HOW_IT_WORKS = [
 /* ---------- Testimonial colors for avatar backgrounds ---------- */
 const AVATAR_COLORS = ["#D4A843", "#4A8B5C", "#00D1FF"];
 
+export interface PlatformStats {
+  students: number;
+  activeCourses: number;
+  credentials: number;
+  totalXp: number;
+}
+
 interface LandingViewProps {
   courseCards: CourseCardData[];
   activeTracks: Track[];
   testimonials?: Testimonial[];
+  platformStats?: PlatformStats;
 }
 
-export default function LandingView({ courseCards, activeTracks, testimonials: dbTestimonials }: LandingViewProps) {
+export default function LandingView({ courseCards, activeTracks, testimonials: dbTestimonials, platformStats }: LandingViewProps) {
   const t = useTranslations("landing");
   const tc = useTranslations("common");
 
@@ -157,11 +165,17 @@ export default function LandingView({ courseCards, activeTracks, testimonials: d
     { icon: Layers, title: t("feature6Title"), desc: t("feature6Desc") },
   ];
 
+  const xpDisplay = (platformStats?.totalXp ?? 0) >= 1_000_000
+    ? { value: Math.round((platformStats?.totalXp ?? 0) / 100_000) / 10, suffix: "M+" }
+    : (platformStats?.totalXp ?? 0) >= 1000
+      ? { value: Math.round((platformStats?.totalXp ?? 0) / 100) / 10, suffix: "K+" }
+      : { value: platformStats?.totalXp ?? 0, suffix: "+" };
+
   const stats = [
-    { value: 2500, suffix: "+", label: t("statsStudents") },
-    { value: 25, suffix: "+", label: t("statsCourses") },
-    { value: 500, suffix: "+", label: t("statsCredentials") },
-    { value: 1.2, suffix: "M+", label: t("statsXP") },
+    { value: platformStats?.students ?? 0, suffix: "+", label: t("statsStudents") },
+    { value: platformStats?.activeCourses ?? 0, suffix: "+", label: t("statsCourses") },
+    { value: platformStats?.credentials ?? 0, suffix: "+", label: t("statsCredentials") },
+    { value: xpDisplay.value, suffix: xpDisplay.suffix, label: t("statsXP") },
   ];
 
   const { data: session } = useSession();
@@ -229,7 +243,7 @@ export default function LandingView({ courseCards, activeTracks, testimonials: d
       {/* ── Hero ── */}
       <section className="relative overflow-hidden px-4 py-24 sm:py-32 lg:py-40">
         {/* Background decorations */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-gold/10" />
+        <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-primary/10 via-transparent to-gold/10" />
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-0 h-[300px] w-[400px] rounded-full bg-gold/5 blur-3xl" />
 
@@ -297,7 +311,7 @@ export default function LandingView({ courseCards, activeTracks, testimonials: d
 
       {/* ── Stats with animated counters ── */}
       <section className="border-y bg-card/50 px-4 py-12">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 sm:gap-8 md:grid-cols-4">
           {stats.map((stat) => (
             <motion.div
               key={stat.label}

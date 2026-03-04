@@ -11,8 +11,10 @@ type Timeframe = "weekly" | "monthly" | "alltime";
 export function useLeaderboard(params: {
   timeframe?: Timeframe;
   courseId?: string;
+  source?: string;
+  achievementId?: string;
 } = {}) {
-  const { timeframe = "alltime", courseId } = params;
+  const { timeframe = "alltime", courseId, source, achievementId } = params;
   const { data: session } = useSession();
   const t = useTranslations("leaderboard");
 
@@ -29,6 +31,8 @@ export function useLeaderboard(params: {
       const url = new URL("/api/leaderboard", window.location.origin);
       url.searchParams.set("timeframe", timeframe);
       if (courseId) url.searchParams.set("courseId", courseId);
+      if (source) url.searchParams.set("source", source);
+      if (achievementId) url.searchParams.set("achievementId", achievementId);
       if (session?.user?.id) url.searchParams.set("userId", session.user.id);
 
       const res = await fetch(url.toString());
@@ -43,7 +47,7 @@ export function useLeaderboard(params: {
     } finally {
       setLoading(false);
     }
-  }, [timeframe, courseId, session?.user?.id]);
+  }, [timeframe, courseId, source, achievementId, session?.user?.id]);
 
   const refreshAction = useCallback(async () => {
     setRefreshing(true);
@@ -53,16 +57,16 @@ export function useLeaderboard(params: {
 
       if (res.ok) {
         if (data.processed > 0) {
-          toast.success("Leaderboard synced with on-chain data!");
+          toast.success(t("synced"));
           fetchLeaderboard();
         } else {
           toast.info(t("nothingToRefresh"));
         }
       } else {
-        toast.error(data.error || "Failed to sync leaderboard");
+        toast.error(data.error || t("syncFailed"));
       }
     } catch (error) {
-      toast.error("Network error while syncing");
+      toast.error(t("syncError"));
     } finally {
       setRefreshing(false);
     }

@@ -63,7 +63,7 @@ export default function SettingsForm({
     if (session?.switchedProfileName && !shownSwitchNotification.current) {
       shownSwitchNotification.current = true;
       toast.info(
-        `You are now signed in as "${session.switchedProfileName}" because this account was already linked to that profile.`,
+        t("switchedProfile", { name: session.switchedProfileName as string }),
       );
       updateSession({});
     }

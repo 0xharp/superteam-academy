@@ -11,6 +11,7 @@ import { OnboardingGuard } from "@/components/providers/onboarding-guard";
 import { Toaster } from "sonner";
 import { Suspense } from "react";
 import { AnalyticsProvider } from "@/components/providers/analytics-provider";
+import { OfflineBanner } from "@/components/offline-banner";
 
 export default async function LocaleLayout({
   children,
@@ -34,6 +35,7 @@ export default async function LocaleLayout({
             <Suspense>
               <AnalyticsProvider>
                 <div className="flex min-h-screen flex-col">
+                  <OfflineBanner />
                   <Header />
                   <OnboardingGuard />
                   <WalletLinkBanner />

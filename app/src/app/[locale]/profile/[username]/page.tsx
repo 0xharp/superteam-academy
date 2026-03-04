@@ -36,7 +36,7 @@ export default async function ProfilePage({
 
     const [stats, skills, { courseMap, trackMap }] = await Promise.all([
       profileService.getProfileStats(session.user.id),
-      skillsService.getSkills(session.user.id),
+      skillsService.getSkills(profile.walletAddress),
       buildMaps(),
     ]);
 
@@ -65,7 +65,7 @@ export default async function ProfilePage({
   const isOwner = session?.user?.id === profile.id;
   const [stats, skills, { courseMap, trackMap }] = await Promise.all([
     profileService.getProfileStats(profile.id),
-    skillsService.getSkills(profile.id),
+    skillsService.getSkills(profile.walletAddress),
     buildMaps(),
   ]);
 

@@ -15,9 +15,8 @@ export async function GET(
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
-  const [{ data: profile }, { data: accounts }, { data: stats }] = await Promise.all([
+  const [{ data: profile }, { data: stats }] = await Promise.all([
     db.from("profiles").select("*").eq("id", id).single(),
-    db.from("linked_accounts").select("provider, provider_account_id, created_at").eq("user_id", id),
     db.from("user_stats").select("*").eq("user_id", id).single(),
   ]);
 
@@ -27,7 +26,6 @@ export async function GET(
 
   return NextResponse.json({
     ...profile,
-    linkedAccounts: accounts ?? [],
     stats: stats ?? null,
   });
 }

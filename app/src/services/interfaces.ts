@@ -13,14 +13,6 @@ import type {
 import type { RunResult } from "@/types/challenge";
 import type { TestCase } from "@/types/course";
 
-export interface Progress {
-  courseId: string;
-  completedLessons: number[];
-  totalLessons: number;
-  progressPct: number;
-  completedAt: string | null;
-}
-
 export interface Credential {
   id: string;
   trackId: number;
@@ -36,34 +28,14 @@ export interface Credential {
   explorerUrl?: string;
 }
 
-export interface LearningProgressService {
-  getProgress(userId: string, courseId: string): Promise<Progress>;
-  completeLesson(
-    userId: string,
-    courseId: string,
-    lessonIndex: number,
-  ): Promise<void>;
-  getEnrollments(userId: string): Promise<Enrollment[]>;
-  enroll(userId: string, courseId: string): Promise<void>;
-  unenroll(userId: string, courseId: string): Promise<void>;
-}
-
 export interface GamificationService {
-  getXP(userId: string): Promise<number>;
-  getLevel(userId: string): Promise<number>;
   getStreak(userId: string): Promise<StreakData>;
-  awardXP(
-    userId: string,
-    amount: number,
-    source: string,
-    sourceId?: string,
-  ): Promise<void>;
   /** Update streak without awarding XP (for on-chain lesson completion). */
   recordActivity(userId: string): Promise<void>;
   getAchievements(userId: string, walletAddress?: string): Promise<Achievement[]>;
   claimAchievement(
     userId: string,
-    achievementIndex: number,
+    achievementId: string,
     walletAddress?: string,
   ): Promise<{ success: boolean; signature?: string; asset?: string; error?: string } | void>;
   getXPHistory(userId: string, limit?: number): Promise<XPTransaction[]>;
@@ -73,6 +45,8 @@ export interface LeaderboardService {
   getLeaderboard(params: {
     timeframe: "weekly" | "monthly" | "alltime";
     courseId?: string;
+    source?: string;
+    achievementId?: string;
   }): Promise<{
     entries: LeaderboardEntry[];
     lastSyncedAt: string | null;
@@ -120,7 +94,7 @@ export interface ProfileService {
 }
 
 export interface AchievementCheckerService {
-  checkEligibility(userId: string): Promise<number[]>;
+  checkEligibility(userId: string, walletAddress?: string): Promise<string[]>;
 }
 
 export interface AchievementClaimResult {
@@ -146,7 +120,7 @@ export interface SkillScore {
 }
 
 export interface SkillsService {
-  getSkills(userId: string): Promise<SkillScore[]>;
+  getSkills(walletAddress?: string): Promise<SkillScore[]>;
 }
 
 export interface AvatarService {
@@ -229,11 +203,6 @@ export interface TrackService {
   getTrackBySlug(slug: string): Promise<Track | null>;
   getTrackCourses(trackSlug: string): Promise<CourseCardData[]>;
   getTrackProgress(trackSlug: string, enrollments: Enrollment[]): number;
-}
-
-export interface TrackImageService {
-  getImageUrl(trackSlug: string): string;
-  uploadImage(trackSlug: string, file: File): Promise<string>;
 }
 
 // ---------------------------------------------------------------------------

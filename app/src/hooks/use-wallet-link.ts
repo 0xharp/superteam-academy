@@ -4,8 +4,10 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { signIn, getSession, useSession } from "next-auth/react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useTranslations } from "next-intl";
 import bs58 from "bs58";
 import { toast } from "sonner";
+import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 /**
  * Reusable hook that performs the full wallet linking flow:
@@ -22,6 +24,7 @@ export function useWalletLink(onLinked?: () => void) {
   const wallet = useWallet();
   const { setVisible } = useWalletModal();
   const { update } = useSession();
+  const tc = useTranslations("common");
   const [linking, setLinking] = useState(false);
   const pendingLink = useRef(false);
   const signingRef = useRef(false);
@@ -49,21 +52,22 @@ export function useWalletLink(onLinked?: () => void) {
       });
 
       if (result?.ok) {
+        trackEvent(ANALYTICS_EVENTS.WALLET_CONNECTED, { address: wallet.publicKey!.toBase58() });
         // Read the fresh session to detect a profile switch.
         // switchedProfileName is set when the wallet belonged to a different account.
         const freshSession = (await getSession()) as Record<string, unknown> | null;
         if (freshSession?.switchedProfileName) {
           toast.info(
-            `You are now signed in as "${freshSession.switchedProfileName}" because this wallet was already linked to that profile.`,
+            tc("switchedProfile", { name: freshSession.switchedProfileName as string }),
           );
         } else {
-          toast.success("Wallet connected!");
+          toast.success(tc("walletConnected"));
         }
         // Clear the one-shot notification from the JWT.
         await update({});
         onLinked?.();
       } else {
-        toast.error("Failed to link wallet. Please try again.");
+        toast.error(tc("walletLinkFailed"));
       }
     } catch {
       // User rejected signing in wallet extension

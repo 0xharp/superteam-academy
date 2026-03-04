@@ -5,6 +5,7 @@ import IDL from "./idl.json";
 
 const connection = new Connection(
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? clusterApiUrl("devnet"),
+  "confirmed",
 );
 
 const PROGRAM_ID = new PublicKey(

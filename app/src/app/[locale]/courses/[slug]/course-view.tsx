@@ -127,6 +127,7 @@ export default function CourseView({ course, slug, preview = false }: { course: 
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to collect credential";
       toast.error(message);
+      import("@sentry/nextjs").then((S) => S.captureException(err)).catch(() => {});
     } finally {
       setCollecting(false);
     }
@@ -410,7 +411,10 @@ export default function CourseView({ course, slug, preview = false }: { course: 
                     variant="ghost"
                     disabled={closing || !course.courseId}
                     onClick={() => {
-                      if (course.courseId) closeEnrollment(course.courseId);
+                      if (course.courseId) {
+                        closeEnrollment(course.courseId);
+                        trackEvent(ANALYTICS_EVENTS.UNENROLLMENT, { courseId: course.courseId, slug });
+                      }
                     }}
                   >
                     <X className="h-3 w-3" />

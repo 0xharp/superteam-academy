@@ -25,15 +25,10 @@ export interface SocialLinks {
 export interface UserStats {
   userId: string;
   totalXP: number;
-  level: number;
   currentStreak: number;
   longestStreak: number;
   lastActivityDate: string | null;
   streakFreezes: number;
-  coursesCompleted: number;
-  lessonsCompleted: number;
-  challengesCompleted: number;
-  achievementFlags: number[];
   updatedAt: string;
 }
 

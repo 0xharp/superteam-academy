@@ -1,4 +1,4 @@
-import type { UserProfile, UserStats, Enrollment } from "@/types/user";
+import type { UserProfile, UserStats } from "@/types/user";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -25,27 +25,10 @@ export function rowToUserStats(row: any): UserStats {
   return {
     userId: row.user_id,
     totalXP: row.total_xp ?? 0,
-    level: row.level ?? 0,
     currentStreak: row.current_streak ?? 0,
     longestStreak: row.longest_streak ?? 0,
     lastActivityDate: row.last_activity_date ?? null,
     streakFreezes: row.streak_freezes ?? 0,
-    coursesCompleted: row.courses_completed ?? 0,
-    lessonsCompleted: row.lessons_completed ?? 0,
-    challengesCompleted: row.challenges_completed ?? 0,
-    achievementFlags: row.achievement_flags ?? [0, 0, 0, 0],
     updatedAt: row.updated_at,
-  };
-}
-
-export function rowToEnrollment(row: any): Enrollment {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    courseId: row.course_id,
-    enrolledAt: row.enrolled_at,
-    completedAt: row.completed_at ?? null,
-    progressPct: row.progress_pct ?? 0,
-    lessonFlags: row.lesson_flags ?? [0, 0, 0, 0],
   };
 }

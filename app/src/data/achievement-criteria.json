@@ -1,0 +1,14 @@
+{
+  "first-steps": "Complete at least one lesson in any course",
+  "course-completer": "Complete all lessons in a course and receive your credential",
+  "speed-runner": "Enroll and complete all lessons in a single course within 24 hours",
+  "week-warrior": "Complete at least one activity per day for 7 consecutive days",
+  "monthly-master": "Complete at least one activity per day for 30 consecutive days",
+  "consistency-king": "Complete at least one activity per day for 100 consecutive days",
+  "rust-rookie": "Complete any course tagged with Rust",
+  "anchor-expert": "Complete every course tagged with Anchor",
+  "early-adopter": "Claim this achievement before the supply runs out (limited edition)",
+  "bug-hunter": "Report a bug that gets verified by the team (admin-awarded)",
+  "social-butterfly": "Link your Google, GitHub, and Solana wallet accounts",
+  "challenge-champion": "Complete at least 50 daily challenges"
+}

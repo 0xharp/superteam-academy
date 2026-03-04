@@ -23,7 +23,9 @@ import {
   ChevronRight,
   Calendar,
   Award,
+  Info,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from "@/components/ui/popover";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -56,7 +58,7 @@ export default function DashboardPage() {
   } = useCoursesCompleted(walletAddress);
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [eligible, setEligible] = useState<number[]>([]);
+  const [eligible, setEligible] = useState<string[]>([]);
   const [activity, setActivity] = useState<XPTransaction[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(true);
@@ -134,21 +136,30 @@ export default function DashboardPage() {
     today.setHours(0, 0, 0, 0);
 
     const activeDatesSet = new Set(streak?.activityDates ?? []);
+    const frozenDatesSet = new Set(streak?.frozenDates ?? []);
 
     return Array.from({ length: 28 }, (_, i) => {
       const date = new Date(today);
       date.setDate(today.getDate() - 27 + i);
       const dateStr = date.toISOString().split("T")[0];
 
-      return { date, active: activeDatesSet.has(dateStr), isToday: i === 27 };
+      return {
+        date,
+        active: activeDatesSet.has(dateStr),
+        frozen: frozenDatesSet.has(dateStr),
+        isToday: i === 27,
+      };
     });
   })();
 
   // Column headers derived from the actual starting weekday (Su=0 … Sa=6)
-  const WEEKDAY_ABBR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-  const calendarHeaders = Array.from({ length: 7 }, (_, i) =>
-    WEEKDAY_ABBR[(streakDays[0].date.getDay() + i) % 7],
-  );
+  const locale = pathname.split("/")[1] || "en";
+  const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  const calendarHeaders = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(streakDays[0].date);
+    d.setDate(d.getDate() + i);
+    return weekdayFormatter.format(d);
+  });
 
   // Month label — show range if the 28-day window spans two months
   const firstDay = streakDays[0].date;
@@ -160,26 +171,26 @@ export default function DashboardPage() {
   function formatTime(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
     const hours = Math.floor(diff / 3600000);
-    if (hours < 1) return "Just now";
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 1) return t("justNow");
+    if (hours < 24) return t("hoursAgo", { count: hours });
     const days = Math.floor(hours / 24);
-    if (days === 1) return "Yesterday";
-    return `${days}d ago`;
+    if (days === 1) return t("yesterday");
+    return t("daysAgo", { count: days });
   }
 
-  function sourceLabel(source: string, courseName?: string): string {
+  function sourceLabel(source: string, courseName?: string, achievementName?: string): string {
     const base = (() => {
       switch (source) {
-        case "lesson": return "Completed lesson";
-        case "challenge": return "Passed challenge";
-        case "streak": return "Streak bonus";
-        case "achievement": return "Achievement unlocked";
-        case "course": return "Course completed";
-        case "daily_first": return "Daily first login";
+        case "lesson": return t("sourceLesson");
+        case "course": return t("sourceCourse");
+        case "creator_reward": return t("sourceCreatorReward");
+        case "achievement": return t("sourceAchievement");
+        case "reward": return t("sourceReward");
         default: return source;
       }
     })();
-    return courseName ? `${base} · ${courseName}` : base;
+    const detail = courseName || achievementName;
+    return detail ? `${base} · ${detail}` : base;
   }
 
   return (
@@ -203,6 +214,7 @@ export default function DashboardPage() {
           loadingStats={playerStats.loading}
           loadingCourses={loadingCoursesCompleted}
           variant="cards"
+          streakFreezes={streak?.streakFreezes}
         />
       </div>
 
@@ -294,6 +306,23 @@ export default function DashboardPage() {
                     <span className="text-xs text-muted-foreground">
                       {t("best")}: <span className="font-medium text-foreground">{streak?.longestStreak ?? 0}</span>
                     </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button type="button" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64">
+                        <PopoverHeader>
+                          <PopoverTitle>{t("streakInfoTitle")}</PopoverTitle>
+                          <PopoverDescription>{t("streakInfoDesc")}</PopoverDescription>
+                        </PopoverHeader>
+                        <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                          <p>{t("streakInfoFreezes", { count: streak?.streakFreezes ?? 0 })}</p>
+                          <p>{t("streakInfoReplenish")}</p>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
               </div>
@@ -329,7 +358,9 @@ export default function DashboardPage() {
                         className={`flex h-9 items-center justify-center rounded-lg text-[11px] font-semibold transition-all
                           ${day.active
                             ? "bg-orange-500 shadow-sm shadow-orange-500/30"
-                            : "bg-muted/60 hover:bg-muted"
+                            : day.frozen
+                              ? "bg-blue-400/80 shadow-sm shadow-blue-400/20"
+                              : "bg-muted/60 hover:bg-muted"
                           }
                           ${day.isToday
                             ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-background"
@@ -338,7 +369,7 @@ export default function DashboardPage() {
                       >
                         <span
                           className={`flex h-6 w-6 items-center justify-center rounded-full
-                            ${day.active ? "text-white" : "text-muted-foreground/60"}`}
+                            ${day.active ? "text-white" : day.frozen ? "text-white" : "text-muted-foreground/60"}`}
                         >
                           {day.date.getDate()}
                         </span>
@@ -349,6 +380,10 @@ export default function DashboardPage() {
                     <span className="flex items-center gap-1.5">
                       <span className="h-4 w-8 rounded-md bg-orange-500" />
                       {t("activeDay")}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-4 w-8 rounded-md bg-blue-400/80" />
+                      {t("frozenDay")}
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="h-4 w-8 rounded-md bg-muted/60 ring-2 ring-orange-500 ring-offset-1 ring-offset-background" />
@@ -423,13 +458,13 @@ export default function DashboardPage() {
                       <Star className="h-3 w-3 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm">{sourceLabel(tx.source, tx.courseName)}</p>
+                      <p className="text-sm">{sourceLabel(tx.source, (tx as unknown as { courseName?: string }).courseName, (tx as unknown as { achievementName?: string }).achievementName)}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-primary">
                           +{tx.amount} {tc("xp")}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {formatTime(tx.createdAt)}
+                          {formatTime(tx.transactionAt)}
                         </span>
                       </div>
                     </div>

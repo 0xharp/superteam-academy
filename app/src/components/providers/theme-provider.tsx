@@ -8,6 +8,7 @@ import {
   useCallback,
   useRef,
 } from "react";
+import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 type Theme = "light" | "dark" | "brasil";
 
@@ -48,6 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (isFirstRender.current) {
       isFirstRender.current = false;
     } else {
+      trackEvent(ANALYTICS_EVENTS.THEME_CHANGED, { theme });
       fetch("/api/profile/preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

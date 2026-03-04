@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { PublicKey } from "@solana/web3.js";
 import { Program, AnchorProvider } from "@coral-xyz/anchor";
 import { SystemProgram } from "@solana/web3.js";
@@ -17,15 +18,17 @@ import {
 } from "@/lib/solana/enrollments";
 import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
-export function parseEnrollError(err: unknown): string {
+type EnrollmentTranslator = (key: string) => string;
+
+export function parseEnrollError(err: unknown, t?: EnrollmentTranslator): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg.toLowerCase().includes("user rejected") || msg.toLowerCase().includes("rejected the request"))
-    return "Transaction rejected.";
-  if (msg.includes("AlreadyEnrolled")) return "You are already enrolled in this course.";
-  if (msg.includes("PrerequisiteNotMet")) return "You must complete the prerequisite course first.";
-  if (msg.includes("CourseNotActive")) return "This course is not currently active.";
-  if (msg.includes("UnenrollCooldown")) return "You must wait 24h after enrolling to unenroll from an incomplete course.";
-  if (msg.includes("NotEnrolled")) return "You are not enrolled in this course.";
+    return t?.("transactionRejected") ?? "Transaction rejected.";
+  if (msg.includes("AlreadyEnrolled")) return t?.("alreadyEnrolled") ?? "You are already enrolled in this course.";
+  if (msg.includes("PrerequisiteNotMet")) return t?.("prerequisiteNotMet") ?? "You must complete the prerequisite course first.";
+  if (msg.includes("CourseNotActive")) return t?.("courseNotActive") ?? "This course is not currently active.";
+  if (msg.includes("UnenrollCooldown")) return t?.("unenrollCooldown") ?? "You must wait 24h after enrolling to unenroll from an incomplete course.";
+  if (msg.includes("NotEnrolled")) return t?.("notEnrolled") ?? "You are not enrolled in this course.";
   return msg.length > 120 ? msg.slice(0, 120) + "…" : msg;
 }
 
@@ -33,6 +36,7 @@ export function useEnrollment(courseId?: string, totalLessons = 0, prerequisiteC
   const { publicKey: adapterKey, signTransaction, signAllTransactions } = useWallet();
   const { data: session } = useSession();
   const { connection } = useConnection();
+  const te = useTranslations("enrollment");
 
   // Determine the effective wallet address to check
   const publicKey = useMemo(() => {
@@ -76,7 +80,7 @@ export function useEnrollment(courseId?: string, totalLessons = 0, prerequisiteC
   const enroll = useCallback(
     async (id: string): Promise<string | null> => {
       if (!publicKey || !signTransaction || !signAllTransactions) {
-        setError("Wallet not connected");
+        setError(te("walletNotConnected"));
         return null;
       }
 
@@ -119,7 +123,7 @@ export function useEnrollment(courseId?: string, totalLessons = 0, prerequisiteC
           tx,
         });
 
-        toast.success("Enrolled! Confirming on-chain… It may take upto 10-15 secs based on RPC lag…", { duration: 12000 });
+        toast.success(te("enrolledConfirming"), { duration: 12000 });
 
         // Poll until the enrollment PDA is visible on the RPC node.
         // loading stays true throughout so the button stays in loading state.
@@ -134,21 +138,22 @@ export function useEnrollment(courseId?: string, totalLessons = 0, prerequisiteC
 
         return tx;
       } catch (err) {
-        const msg = parseEnrollError(err);
+        const msg = parseEnrollError(err, te);
         setError(msg);
         toast.error(msg);
+        import("@sentry/nextjs").then((S) => S.captureException(err)).catch(() => {});
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [publicKey, signTransaction, signAllTransactions, connection, fetchAndStore],
+    [publicKey, signTransaction, signAllTransactions, connection, fetchAndStore, te],
   );
 
   const closeEnrollment = useCallback(
     async (id: string): Promise<string | null> => {
       if (!publicKey || !signTransaction || !signAllTransactions) {
-        setError("Wallet not connected");
+        setError(te("walletNotConnected"));
         return null;
       }
 
@@ -176,18 +181,19 @@ export function useEnrollment(courseId?: string, totalLessons = 0, prerequisiteC
           .rpc();
 
         setEnrollment(null);
-        toast.success("Enrollment closed.");
+        toast.success(te("enrollmentClosed"));
         return tx;
       } catch (err) {
-        const msg = parseEnrollError(err);
+        const msg = parseEnrollError(err, te);
         setError(msg);
         toast.error(msg);
+        import("@sentry/nextjs").then((S) => S.captureException(err)).catch(() => {});
         return null;
       } finally {
         setClosing(false);
       }
     },
-    [publicKey, signTransaction, signAllTransactions, connection],
+    [publicKey, signTransaction, signAllTransactions, connection, te],
   );
 
   /** Returns true if the lesson at `lessonIndex` is marked complete in the on-chain bitmap. */

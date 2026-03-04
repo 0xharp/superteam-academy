@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { StreakData } from "@/types/gamification";
+import { calculateLevel } from "@/types/gamification";
+import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { PublicKey } from "@solana/web3.js";
 
 export interface PlayerStats {
@@ -23,6 +25,8 @@ const DEFAULT_STREAK: StreakData = {
  * Shared hook that fetches on-chain XP (Token-2022 ATA) and off-chain streak.
  * Used by both Dashboard and Profile pages for consistent stats.
  */
+const STREAK_MILESTONES = [3, 7, 14, 30];
+
 export function usePlayerStats(walletAddress?: string | null): PlayerStats {
   const [stats, setStats] = useState<PlayerStats>({
     xp: 0,
@@ -30,6 +34,7 @@ export function usePlayerStats(walletAddress?: string | null): PlayerStats {
     streak: null,
     loading: true,
   });
+  const prevStreakRef = useRef<number | null>(null);
 
   useEffect(() => {
     // undefined = session still loading, keep skeleton; null = no wallet linked
@@ -55,8 +60,21 @@ export function usePlayerStats(walletAddress?: string | null): PlayerStats {
         if (cancelled) return;
 
         const xp = xpResult;
-        const level = Math.floor(Math.sqrt(xp / 100));
+        const level = calculateLevel(xp).level;
         const streak: StreakData = apiResult?.streak ?? DEFAULT_STREAK;
+
+        // Track streak events on change
+        const prev = prevStreakRef.current;
+        if (prev !== null) {
+          if (streak.currentStreak === 0 && prev > 0) {
+            trackEvent(ANALYTICS_EVENTS.STREAK_BROKEN, { previousStreak: prev });
+          }
+          const milestone = STREAK_MILESTONES.find((m) => streak.currentStreak >= m && prev < m);
+          if (milestone) {
+            trackEvent(ANALYTICS_EVENTS.STREAK_MILESTONE, { days: milestone, currentStreak: streak.currentStreak });
+          }
+        }
+        prevStreakRef.current = streak.currentStreak;
 
         setStats({ xp, level, streak, loading: false });
       } catch {

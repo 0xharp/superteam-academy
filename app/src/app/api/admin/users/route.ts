@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/auth-guard";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getXPBalance } from "@/lib/solana/on-chain";
+import { calculateLevel } from "@/types/gamification";
 import { PublicKey } from "@solana/web3.js";
 
 export async function GET(req: NextRequest) {
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     const s = statsMap.get(u.id);
     const providers = providerMap.get(u.id) ?? new Set();
     const onChainXp = xpBalances[i] ?? 0;
-    const level = Math.floor(Math.sqrt(onChainXp / 100));
+    const level = calculateLevel(onChainXp).level;
     return {
       ...u,
       totalXp: onChainXp,

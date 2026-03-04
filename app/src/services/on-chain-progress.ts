@@ -118,40 +118,15 @@ class BackendSignerOnChainProgressService implements OnChainProgressService {
 }
 
 // ---------------------------------------------------------------------------
-// No-Op Implementation
-// Used when BACKEND_URL is not configured (local dev without the signer).
-// All methods succeed silently so the UI stays functional.
+// Singleton
 // ---------------------------------------------------------------------------
 
-class NoOpOnChainProgressService implements OnChainProgressService {
-  async completeLesson(_params: Parameters<OnChainProgressService["completeLesson"]>[0]): Promise<LessonCompletionResult> {
-    return { confirmed: false, xpEarned: undefined, signature: undefined, finalized: false };
-  }
+const backendUrl = process.env.BACKEND_URL;
+const authSecret = process.env.AUTH_SECRET;
 
-  async finalizeCourse(
-    _params: Parameters<OnChainProgressService["finalizeCourse"]>[0],
-  ): Promise<{ confirmed: boolean; signature: string | undefined }> {
-    return { confirmed: false, signature: undefined };
-  }
-
-  async issueCredential(
-    _params: Parameters<OnChainProgressService["issueCredential"]>[0],
-  ): Promise<CredentialIssuanceResult> {
-    return { confirmed: false, signature: undefined, credentialAsset: undefined };
-  }
+if (!backendUrl || !authSecret) {
+  console.warn("[on-chain-progress] BACKEND_URL or AUTH_SECRET not set — on-chain progress will fail");
 }
 
-// ---------------------------------------------------------------------------
-// Singleton with fallback
-// ---------------------------------------------------------------------------
-
-function createService(): OnChainProgressService {
-  const backendUrl = process.env.BACKEND_URL;
-  const authSecret = process.env.AUTH_SECRET;
-  if (backendUrl && authSecret) {
-    return new BackendSignerOnChainProgressService(backendUrl, authSecret);
-  }
-  return new NoOpOnChainProgressService();
-}
-
-export const onChainProgressService: OnChainProgressService = createService();
+export const onChainProgressService: OnChainProgressService =
+  new BackendSignerOnChainProgressService(backendUrl ?? "", authSecret ?? "");

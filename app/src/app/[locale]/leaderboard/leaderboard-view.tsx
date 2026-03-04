@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +29,11 @@ import { useSession } from "next-auth/react";
 import type { CourseCardData } from "@/types/course";
 
 type Timeframe = "weekly" | "monthly" | "alltime";
+
+interface AchievementOption {
+  achievementId: string;
+  name: string;
+}
 
 interface LeaderboardViewProps {
   courses: CourseCardData[];
@@ -62,6 +67,26 @@ export default function LeaderboardView({ courses }: LeaderboardViewProps) {
 
   const [timeframe, setTimeframe] = useState<Timeframe>("alltime");
   const [courseId, setCourseId] = useState<string>("all");
+  const [source, setSource] = useState<string>("all");
+  const [achievementId, setAchievementId] = useState<string>("all");
+  const [achievements, setAchievements] = useState<AchievementOption[]>([]);
+
+  // Fetch achievement list for filter dropdown
+  useEffect(() => {
+    fetch("/api/gamification?type=achievements")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAchievements(
+            data.map((a: { achievementId: string; name: string }) => ({
+              achievementId: a.achievementId,
+              name: a.name,
+            })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const {
     entries,
@@ -73,7 +98,9 @@ export default function LeaderboardView({ courses }: LeaderboardViewProps) {
     refresh
   } = useLeaderboard({
     timeframe,
-    courseId: courseId === "all" ? undefined : courseId
+    courseId: courseId === "all" ? undefined : courseId,
+    source: source === "all" ? undefined : source,
+    achievementId: achievementId === "all" ? undefined : achievementId,
   });
 
   const top3 = entries.slice(0, 3);
@@ -127,10 +154,10 @@ export default function LeaderboardView({ courses }: LeaderboardViewProps) {
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={courseId} onValueChange={setCourseId}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={t("allCourses")} />
             </SelectTrigger>
             <SelectContent>
@@ -142,6 +169,34 @@ export default function LeaderboardView({ courses }: LeaderboardViewProps) {
               ))}
             </SelectContent>
           </Select>
+          <Select value={source} onValueChange={setSource}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder={t("allSources")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allSources")}</SelectItem>
+              <SelectItem value="lesson">{t("sourceLessons")}</SelectItem>
+              <SelectItem value="course">{t("sourceCourseCompletions")}</SelectItem>
+              <SelectItem value="creator_reward">{t("sourceCreatorRewards")}</SelectItem>
+              <SelectItem value="achievement">{t("sourceAchievements")}</SelectItem>
+              <SelectItem value="reward">{t("sourceXpRewards")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {achievements.length > 0 && (
+            <Select value={achievementId} onValueChange={setAchievementId}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder={t("allAchievements")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allAchievements")}</SelectItem>
+                {achievements.map((a) => (
+                  <SelectItem key={a.achievementId} value={a.achievementId}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 

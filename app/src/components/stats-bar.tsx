@@ -3,8 +3,9 @@
 import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from "@/components/ui/popover";
 import { calculateLevel } from "@/types/gamification";
-import { Star, Zap, Flame, Trophy } from "lucide-react";
+import { Star, Zap, Flame, Trophy, Info } from "lucide-react";
 
 interface StatsBarProps {
   xp: number;
@@ -16,6 +17,30 @@ interface StatsBarProps {
   loadingCourses: boolean;
   /** "cards" layout (dashboard) or "compact" layout (profile) */
   variant?: "cards" | "compact";
+  streakFreezes?: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function StreakInfoPopover({ freezes, t }: { freezes: number; t: (key: string, values?: any) => string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64">
+        <PopoverHeader>
+          <PopoverTitle>{t("streakInfoTitle")}</PopoverTitle>
+          <PopoverDescription>{t("streakInfoDesc")}</PopoverDescription>
+        </PopoverHeader>
+        <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+          <p>{t("streakInfoFreezes", { count: freezes })}</p>
+          <p>{t("streakInfoReplenish")}</p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function StatsBar({
@@ -25,12 +50,14 @@ export function StatsBar({
   loadingStats,
   loadingCourses,
   variant = "cards",
+  streakFreezes,
 }: StatsBarProps) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
   const tp = useTranslations("profile");
 
   const levelInfo = calculateLevel(xp);
+  const freezes = streakFreezes ?? 0;
 
   if (variant === "compact") {
     return (
@@ -66,8 +93,9 @@ export function StatsBar({
           ) : (
             <p className="text-2xl font-bold">{streak}</p>
           )}
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             {tc("streak")} ({tc("days")})
+            {!loadingStats && <StreakInfoPopover freezes={freezes} t={tc} />}
           </p>
         </div>
         <div className="rounded-lg border border-border p-3 text-center">
@@ -128,8 +156,9 @@ export function StatsBar({
             ) : (
               <p className="text-2xl font-bold">{streak}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
               {tc("streak")} ({tc("days")})
+              {!loadingStats && <StreakInfoPopover freezes={freezes} t={tc} />}
             </p>
           </div>
         </CardContent>

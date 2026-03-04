@@ -8,4 +8,6 @@ if (process.env.SENTRY_DSN) {
     replaysOnErrorSampleRate: 1.0,
     environment: process.env.NODE_ENV,
   });
+} else if (process.env.NODE_ENV === "development") {
+  console.warn("[Sentry] SENTRY_DSN not configured — error tracking disabled");
 }

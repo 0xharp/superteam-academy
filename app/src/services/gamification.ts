@@ -4,14 +4,15 @@ import type {
   Achievement,
   XPTransaction,
 } from "@/types/gamification";
-import { calculateLevel } from "@/types/gamification";
 import { getAdminClient } from "@/lib/supabase/admin";
-import { rowToUserStats } from "@/lib/supabase/mappers";
-import { getCoursePDA, getAchievementReceiptPDA } from "@/lib/solana/on-chain";
+import { getAchievementReceiptPDA } from "@/lib/solana/on-chain";
 
-const DAILY_XP_CAP = 2000;
+/** UTC today as YYYY-MM-DD. */
+function getUTCTodayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
 
-/** Calculate the number of missed days between lastActivityDate and yesterday. */
+/** Calculate the number of missed days between lastActivityDate and yesterday (UTC). */
 function getMissedDays(lastActivityDate: string): number {
   const last = new Date(lastActivityDate + "T00:00:00Z");
   const yesterday = new Date();
@@ -31,7 +32,7 @@ function computeNewStreak(
   if (!lastActivityDate) return { newStreak: 1, freezesUsed: 0 };
 
   const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const yesterdayStr = yesterday.toISOString().split("T")[0];
 
   if (lastActivityDate === yesterdayStr) {
@@ -46,23 +47,6 @@ function computeNewStreak(
   return { newStreak: 1, freezesUsed: 0 };
 }
 
-const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlocked" | "unlockedAt">[] =
-  [
-    { id: 0, achievementId: "first-steps", name: "First Steps", description: "Complete your first lesson", icon: "footprints", category: "progress", xpReward: 50 },
-    { id: 1, achievementId: "course-completer", name: "Course Completer", description: "Complete your first course", icon: "graduation-cap", category: "progress", xpReward: 200 },
-    { id: 2, achievementId: "speed-runner", name: "Speed Runner", description: "Complete a course in one day", icon: "zap", category: "progress", xpReward: 500 },
-    { id: 3, achievementId: "week-warrior", name: "Week Warrior", description: "Maintain a 7-day streak", icon: "flame", category: "streak", xpReward: 100 },
-    { id: 4, achievementId: "monthly-master", name: "Monthly Master", description: "Maintain a 30-day streak", icon: "calendar", category: "streak", xpReward: 300 },
-    { id: 5, achievementId: "consistency-king", name: "Consistency King", description: "Maintain a 100-day streak", icon: "crown", category: "streak", xpReward: 1000 },
-    { id: 6, achievementId: "rust-rookie", name: "Rust Rookie", description: "Complete a Rust course", icon: "code", category: "skill", xpReward: 150 },
-    { id: 7, achievementId: "anchor-expert", name: "Anchor Expert", description: "Complete all Anchor courses", icon: "anchor", category: "skill", xpReward: 500 },
-    { id: 8, achievementId: "early-adopter", name: "Early Adopter", description: "Among the first 100 users", icon: "star", category: "special", xpReward: 250 },
-    { id: 9, achievementId: "bug-hunter", name: "Bug Hunter", description: "Report a verified bug", icon: "bug", category: "special", xpReward: 200 },
-    { id: 10, achievementId: "social-butterfly", name: "Social Butterfly", description: "Connect all social accounts", icon: "users", category: "special", xpReward: 100 },
-    { id: 11, achievementId: "challenge-champion", name: "Challenge Champion", description: "Complete 50 code challenges", icon: "trophy", category: "progress", xpReward: 400 },
-  ];
-
-export { ACHIEVEMENT_DEFINITIONS };
 
 // --- Supabase Implementation ---
 
@@ -73,30 +57,16 @@ class SupabaseGamificationService implements GamificationService {
     return client;
   }
 
-  async getXP(userId: string): Promise<number> {
-    const { data } = await this.db
-      .from("user_stats")
-      .select("total_xp")
-      .eq("user_id", userId)
-      .single();
-    return data?.total_xp ?? 0;
-  }
-
-  async getLevel(userId: string): Promise<number> {
-    const xp = await this.getXP(userId);
-    return calculateLevel(xp).level;
-  }
-
   async getStreak(userId: string): Promise<StreakData> {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getUTCTodayStr();
     const twentyEightDaysAgo = new Date();
-    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 27);
+    twentyEightDaysAgo.setUTCDate(twentyEightDaysAgo.getUTCDate() - 27);
     const sinceDate = twentyEightDaysAgo.toISOString().split("T")[0];
 
     const [{ data }, { data: txRows }] = await Promise.all([
       this.db
         .from("user_stats")
-        .select("current_streak, longest_streak, last_activity_date, streak_freezes")
+        .select("current_streak, longest_streak, last_activity_date, streak_freezes, streak_freezes_refreshed_at")
         .eq("user_id", userId)
         .single(),
       this.db
@@ -107,13 +77,19 @@ class SupabaseGamificationService implements GamificationService {
     ]);
 
     // Extract unique dates from transactions
-    const activityDates = [
-      ...new Set(
-        (txRows ?? []).map((r: { transaction_at: string }) =>
-          r.transaction_at.split("T")[0],
-        ),
+    const txDates = new Set(
+      (txRows ?? []).map((r: { transaction_at: string }) =>
+        r.transaction_at.split("T")[0],
       ),
-    ].sort();
+    );
+
+    // If last_activity_date is today but xp_transactions hasn't synced yet,
+    // inject today so the calendar shows it as active (not frozen).
+    if (data?.last_activity_date === today) {
+      txDates.add(today);
+    }
+
+    const activityDates = [...txDates].sort();
 
     if (!data) {
       return {
@@ -126,117 +102,83 @@ class SupabaseGamificationService implements GamificationService {
       };
     }
 
-    return {
-      currentStreak: data.current_streak ?? 0,
-      longestStreak: data.longest_streak ?? 0,
-      lastActivityDate: data.last_activity_date ?? null,
-      streakFreezes: data.streak_freezes ?? 0,
-      isActiveToday: data.last_activity_date === today,
-      activityDates,
-    };
-  }
+    // Read-side freeze refresh: if different month, show 3 (will be persisted on next recordActivity)
+    const refreshedMonth = data.streak_freezes_refreshed_at?.slice(0, 7);
+    const currentMonth = today.slice(0, 7);
+    const streakFreezes = (!refreshedMonth || refreshedMonth !== currentMonth)
+      ? 3
+      : (data.streak_freezes ?? 0);
 
-  async awardXP(
-    userId: string,
-    amount: number,
-    source: string,
-    sourceId?: string,
-  ): Promise<void> {
-    const today = new Date().toISOString().split("T")[0];
+    // Compute frozenDates: walk backward from last_activity_date finding gap days
+    // that were bridged by freezes within the current streak.
+    // current_streak counts ACTIVE days only, so the calendar span is wider when freezes were used.
+    const frozenDates: string[] = [];
+    const currentStreak = data.current_streak ?? 0;
+    if (currentStreak > 1 && data.last_activity_date) {
+      const activitySet = new Set(activityDates);
+      const cursor = new Date(data.last_activity_date + "T00:00:00Z");
+      let activeCount = 0;
+      const pendingGaps: string[] = [];
 
-    // Check daily cap
-    const { data: todayTxs } = await this.db
-      .from("xp_transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .gte("transaction_at", `${today}T00:00:00Z`);
-
-    const todayXP = (todayTxs ?? []).reduce(
-      (sum: number, t: { amount: number }) => sum + t.amount,
-      0,
-    );
-    const cappedAmount = Math.min(amount, DAILY_XP_CAP - todayXP);
-    if (cappedAmount <= 0) return;
-
-    // Convert slug to PDA if provided for consistent indexing
-    let coursePdaString: string | undefined = undefined;
-    if (sourceId) {
-      try {
-        coursePdaString = getCoursePDA(sourceId)[0].toBase58();
-      } catch (err) {
-        // Achievement IDs or other non-slug sourceIds fall back to original
-        coursePdaString = sourceId;
+      for (let safety = 0; safety < 365 && activeCount < currentStreak; safety++) {
+        const dStr = cursor.toISOString().split("T")[0];
+        if (activitySet.has(dStr)) {
+          activeCount++;
+          frozenDates.push(...pendingGaps);
+          pendingGaps.length = 0;
+        } else {
+          pendingGaps.push(dStr);
+          if (pendingGaps.length > 3) break;
+        }
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
       }
     }
 
-    // Insert XP transaction
-    await this.db.from("xp_transactions").insert({
-      user_id: userId,
-      amount: cappedAmount,
-      source,
-      course_pda: coursePdaString,
-    });
-
-    // Get current stats
-    const { data: stats } = await this.db
-      .from("user_stats")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (!stats) return;
-
-    const currentStats = rowToUserStats(stats);
-    const newXP = currentStats.totalXP + cappedAmount;
-    const newLevel = calculateLevel(newXP).level;
-
-    // Update streak
-    let newStreak = currentStats.currentStreak;
-    let newLongest = currentStats.longestStreak;
-    let newFreezes = currentStats.streakFreezes;
-
-    if (currentStats.lastActivityDate !== today) {
-      const result = computeNewStreak(
-        currentStats.lastActivityDate,
-        today,
-        currentStats.currentStreak,
-        newFreezes,
-      );
-      newStreak = result.newStreak;
-      newFreezes -= result.freezesUsed;
-      if (newStreak > newLongest) newLongest = newStreak;
-    }
-
-    await this.db
-      .from("user_stats")
-      .update({
-        total_xp: newXP,
-        level: newLevel,
-        current_streak: newStreak,
-        longest_streak: newLongest,
-        last_activity_date: today,
-        streak_freezes: newFreezes,
-      })
-      .eq("user_id", userId);
+    return {
+      currentStreak,
+      longestStreak: data.longest_streak ?? 0,
+      lastActivityDate: data.last_activity_date ?? null,
+      streakFreezes,
+      isActiveToday: data.last_activity_date === today,
+      activityDates,
+      frozenDates,
+    };
   }
 
   async recordActivity(userId: string): Promise<void> {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getUTCTodayStr();
+    const currentMonth = today.slice(0, 7);
+
     const { data: stats } = await this.db
       .from("user_stats")
-      .select("current_streak, longest_streak, last_activity_date, streak_freezes")
+      .select("current_streak, longest_streak, last_activity_date, streak_freezes, streak_freezes_refreshed_at")
       .eq("user_id", userId)
       .single();
+
     if (!stats) {
       await this.db.from("user_stats").upsert(
-        { user_id: userId, current_streak: 1, longest_streak: 1, last_activity_date: today, streak_freezes: 3 },
+        { user_id: userId, current_streak: 1, longest_streak: 1, last_activity_date: today, streak_freezes: 3, streak_freezes_refreshed_at: today },
         { onConflict: "user_id" },
       );
       return;
     }
-    if (stats.last_activity_date === today) return;
-    let newLongest = stats.longest_streak ?? 0;
+
+    // Monthly freeze replenishment — before early-exit check
+    const refreshedMonth = stats.streak_freezes_refreshed_at?.slice(0, 7);
     let newFreezes = stats.streak_freezes ?? 0;
+    let freezeRefreshed = false;
+    if (!refreshedMonth || refreshedMonth !== currentMonth) {
+      newFreezes = 3;
+      freezeRefreshed = true;
+      await this.db
+        .from("user_stats")
+        .update({ streak_freezes: 3, streak_freezes_refreshed_at: today })
+        .eq("user_id", userId);
+    }
+
+    if (stats.last_activity_date === today) return;
+
+    let newLongest = stats.longest_streak ?? 0;
     const result = computeNewStreak(
       stats.last_activity_date,
       today,
@@ -246,6 +188,7 @@ class SupabaseGamificationService implements GamificationService {
     const newStreak = result.newStreak;
     newFreezes -= result.freezesUsed;
     if (newStreak > newLongest) newLongest = newStreak;
+
     await this.db
       .from("user_stats")
       .update({
@@ -253,41 +196,42 @@ class SupabaseGamificationService implements GamificationService {
         longest_streak: newLongest,
         last_activity_date: today,
         streak_freezes: newFreezes,
+        ...(freezeRefreshed ? {} : { streak_freezes_refreshed_at: stats.streak_freezes_refreshed_at ?? today }),
       })
       .eq("user_id", userId);
   }
 
   async getAchievements(userId: string, walletAddress?: string): Promise<Achievement[]> {
-    // Build achievement list from on-chain types + hardcoded metadata fallbacks
+    const { getAllCriteria } = await import("@/services/achievement-criteria");
+    const criteriaMap = getAllCriteria();
+
     let allDefs: (Omit<Achievement, "unlocked" | "unlockedAt"> & { isActive: boolean })[];
 
     try {
       const { program } = await import("@/lib/solana/program");
       const onChainAccounts = await program.account.achievementType.all();
 
-      const hardcodedMap = new Map(
-        ACHIEVEMENT_DEFINITIONS.map((d) => [d.achievementId, d]),
-      );
-
       allDefs = onChainAccounts.map((a, i) => {
-        const hc = hardcodedMap.get(a.account.achievementId);
+        const maxSupply = a.account.maxSupply ?? 0;
+        const currentSupply = a.account.currentSupply ?? 0;
         return {
-          id: hc?.id ?? 100 + i,
+          id: i,
           achievementId: a.account.achievementId,
-          name: hc?.name ?? a.account.name,
-          description: hc?.description ?? a.account.name,
-          icon: hc?.icon ?? "trophy",
-          category: hc?.category ?? "special",
+          name: a.account.name,
+          description: a.account.name,
           xpReward: a.account.xpReward,
+          maxSupply,
+          currentSupply,
+          criteria: criteriaMap[a.account.achievementId],
+          supplyExhausted: maxSupply > 0 && currentSupply >= maxSupply,
           isActive: a.account.isActive,
         };
       });
     } catch {
-      allDefs = ACHIEVEMENT_DEFINITIONS.map((d) => ({ ...d, isActive: true }));
+      return [];
     }
 
     if (!walletAddress) {
-      // No wallet: show only active achievements (can't check receipts)
       return allDefs
         .filter((def) => def.isActive)
         .map(({ isActive: _, ...def }) => ({
@@ -307,7 +251,6 @@ class SupabaseGamificationService implements GamificationService {
 
     const accounts = await connection.getMultipleAccountsInfo(pdas);
 
-    // Show active achievements + any inactive ones the user has already earned
     return allDefs
       .map(({ isActive, ...def }, i) => ({
         ...def,
@@ -321,12 +264,9 @@ class SupabaseGamificationService implements GamificationService {
 
   async claimAchievement(
     userId: string,
-    achievementIndex: number,
+    achievementId: string,
     walletAddress?: string,
   ): Promise<{ success: boolean; signature?: string; asset?: string; error?: string }> {
-    const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.id === achievementIndex);
-    if (!def) return { success: false, error: "Unknown achievement" };
-
     if (!walletAddress) {
       return { success: false, error: "Wallet required to claim achievements on-chain" };
     }
@@ -335,7 +275,7 @@ class SupabaseGamificationService implements GamificationService {
     const { PublicKey } = await import("@solana/web3.js");
     const { connection } = await import("@/lib/solana/on-chain");
     const receiptPDA = getAchievementReceiptPDA(
-      def.achievementId,
+      achievementId,
       new PublicKey(walletAddress),
     )[0];
     const existing = await connection.getAccountInfo(receiptPDA);
@@ -347,7 +287,6 @@ class SupabaseGamificationService implements GamificationService {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
     const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
 
-    // Build a minimal JWT for backend auth
     const { SignJWT } = await import("jose");
     const token = await new SignJWT({ sub: userId })
       .setProtectedHeader({ alg: "HS256" })
@@ -361,7 +300,7 @@ class SupabaseGamificationService implements GamificationService {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        achievementId: def.achievementId,
+        achievementId,
         recipientWallet: walletAddress,
       }),
     });
@@ -396,8 +335,9 @@ class SupabaseGamificationService implements GamificationService {
         userId: row.user_id as string,
         amount: row.amount as number,
         source: row.source as XPTransaction["source"],
-        sourceId: (row.course_pda as string) || undefined,
-        createdAt: row.transaction_at as string,
+        courseId: (row.course_id as string) || undefined,
+        achievementId: (row.achievement_id as string) || undefined,
+        transactionAt: row.transaction_at as string,
       }),
     );
   }

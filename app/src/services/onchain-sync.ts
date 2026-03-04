@@ -1,17 +1,15 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 import type { ConfirmedSignatureInfo } from "@solana/web3.js";
 import { XP_MINT, PROGRAM_ID } from "@/lib/solana/on-chain";
-
-// Label stored in course_pda when the XP mint is not tied to a specific course
-// (e.g. reward_xp, award_achievement instructions).
-export const NON_COURSE_XP_LABEL = "XP/Achievement Award";
 
 // --- Types ---
 
 export interface XpMintRecord {
   walletAddress: string;
   amount: number;
-  coursePda: string;
+  source: "lesson" | "course" | "creator_reward" | "achievement" | "reward";
+  courseId: string | null;
+  achievementId: string | null;
   signature: string;
   timestamp: number;
 }
@@ -49,13 +47,6 @@ export interface OnChainSyncService {
   }>;
 }
 
-// XP mint address for identifying course-related instructions.
-// In complete_lesson/finalize_course, the account layout is:
-//   [config, course, enrollment, learner, xp_mint, ...]
-// So accounts[1] = course PDA and accounts[4] = XP mint.
-// For reward_xp/award_achievement, accounts[4] is NOT XP mint,
-// so we use this to distinguish course-related XP from other XP.
-
 class HeliusSyncService implements OnChainSyncService {
   private connection: Connection;
   private apiKey: string;
@@ -69,6 +60,26 @@ class HeliusSyncService implements OnChainSyncService {
     records: XpMintRecord[];
     latestSignature: string | null;
   }> {
+    // Build reverse maps for PDA → courseId / achievementId
+    const pdaToCourseId = new Map<string, string>();
+    const pdaToAchievementId = new Map<string, string>();
+
+    try {
+      const { program } = await import("@/lib/solana/program");
+      const [courseAccounts, achAccounts] = await Promise.all([
+        program.account.course.all(),
+        program.account.achievementType.all(),
+      ]);
+      for (const c of courseAccounts) {
+        pdaToCourseId.set(c.publicKey.toBase58(), c.account.courseId);
+      }
+      for (const a of achAccounts) {
+        pdaToAchievementId.set(a.publicKey.toBase58(), a.account.achievementId);
+      }
+    } catch {
+      // If program fetch fails, records will have null courseId/achievementId
+    }
+
     const allRecords: XpMintRecord[] = [];
     let cursor: string | undefined;
     let latestSignature: string | null = null;
@@ -94,7 +105,7 @@ class HeliusSyncService implements OnChainSyncService {
       const txs = await this.fetchEnhancedTransactions(signatures);
 
       for (const tx of txs) {
-        const records = this.parseTransaction(tx);
+        const records = this.parseTransaction(tx, pdaToCourseId, pdaToAchievementId);
         allRecords.push(...records);
       }
 
@@ -145,35 +156,52 @@ class HeliusSyncService implements OnChainSyncService {
     return results;
   }
 
-  private parseTransaction(tx: HeliusEnhancedTransaction): XpMintRecord[] {
+  private parseTransaction(
+    tx: HeliusEnhancedTransaction,
+    pdaToCourseId: Map<string, string>,
+    pdaToAchievementId: Map<string, string>,
+  ): XpMintRecord[] {
     const xpMint = XP_MINT.toBase58();
     const progId = PROGRAM_ID.toBase58();
     const records: XpMintRecord[] = [];
 
-    // Extract course PDA or achievement PDA from instruction account layouts.
-    //
-    // complete_lesson/finalize_course: [config, course, enrollment, learner, xp_mint, ...]
-    //   → accounts[4] === XP_MINT → coursePda = accounts[1] (course PDA)
-    //
-    // award_achievement: [config, achievement_type, achievement_receipt, minter_role, asset, collection, recipient, recipient_token_account, xp_mint, ...]
-    //   → accounts[8] === XP_MINT → coursePda = "ach:<accounts[1]>" (AchievementType PDA)
-    //
-    // reward_xp: [config, minter_role, xp_mint, recipient_token_account, minter, token_program]
-    //   → accounts[2] === XP_MINT → NON_COURSE_XP_LABEL
-    let coursePda: string = NON_COURSE_XP_LABEL;
+    // Detect instruction type by account count and xp_mint position per IDL:
+    //   reward_xp:         6 accounts, accounts[2] = xpMint
+    //   complete_lesson:    8 accounts, accounts[5] = xpMint
+    //   finalize_course:   10 accounts, accounts[7] = xpMint
+    //   award_achievement: 14 accounts, accounts[8] = xpMint
+    let source: XpMintRecord["source"] = "reward";
+    let coursePda: string | null = null;
+    let achievementTypePda: string | null = null;
+    let creatorAta: string | null = null;
+
     for (const inst of tx.instructions) {
       if (inst.programId !== progId) continue;
-      // Course instructions: accounts[4] = xp_mint
-      if (inst.accounts.length >= 5 && inst.accounts[4] === xpMint) {
+
+      if (inst.accounts.length === 6 && inst.accounts[2] === xpMint) {
+        source = "reward";
+        break;
+      }
+      if (inst.accounts.length === 8 && inst.accounts[5] === xpMint) {
+        source = "lesson";
         coursePda = inst.accounts[1];
         break;
       }
-      // award_achievement: accounts[8] = xp_mint
-      if (inst.accounts.length >= 9 && inst.accounts[8] === xpMint) {
-        coursePda = `ach:${inst.accounts[1]}`;
+      if (inst.accounts.length === 10 && inst.accounts[7] === xpMint) {
+        source = "course";
+        coursePda = inst.accounts[1];
+        creatorAta = inst.accounts[5];
+        break;
+      }
+      if (inst.accounts.length >= 14 && inst.accounts[8] === xpMint) {
+        source = "achievement";
+        achievementTypePda = inst.accounts[1];
         break;
       }
     }
+
+    const resolvedCourseId = coursePda ? (pdaToCourseId.get(coursePda) ?? null) : null;
+    const resolvedAchievementId = achievementTypePda ? (pdaToAchievementId.get(achievementTypePda) ?? null) : null;
 
     // Extract XP amounts from tokenBalanceChanges
     for (const account of tx.accountData) {
@@ -185,10 +213,17 @@ class HeliusSyncService implements OnChainSyncService {
         const amount = rawAmount / Math.pow(10, decimals);
 
         if (amount > 0) {
+          // For finalize_course, distinguish learner XP from creator reward
+          const recordSource = (source === "course" && creatorAta && change.userAccount === creatorAta)
+            ? "creator_reward" as const
+            : source;
+
           records.push({
             walletAddress: change.userAccount,
             amount,
-            coursePda,
+            source: recordSource,
+            courseId: resolvedCourseId,
+            achievementId: resolvedAchievementId,
             signature: tx.signature,
             timestamp: tx.timestamp,
           });

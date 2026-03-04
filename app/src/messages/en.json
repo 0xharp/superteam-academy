@@ -52,7 +52,20 @@
     "status": "Status",
     "actions": "Actions",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "streakInfoTitle": "Streak Rules",
+    "streakInfoDesc": "Complete any XP-earning activity daily to maintain your streak. Streaks count lessons, challenges, and achievements.",
+    "streakInfoFreezes": "Streak freezes remaining: {count}/3",
+    "streakInfoReplenish": "Freezes replenish to 3 on your first activity each month.",
+    "by": "by",
+    "walletConnected": "Wallet connected!",
+    "walletLinkFailed": "Failed to link wallet. Please try again.",
+    "switchedProfile": "You are now signed in as \"{name}\" because this wallet was already linked to that profile.",
+    "loadingChart": "Loading chart...",
+    "offlineMessage": "You're offline — some features may be limited",
+    "levelShort": "Lv {level}",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again"
   },
   "landing": {
     "newCourse": "New Course",
@@ -174,6 +187,17 @@
     "alreadyCompleted": "Already Completed",
     "alreadyCompletedDescription": "You have already earned credit for this course."
   },
+  "enrollment": {
+    "transactionRejected": "Transaction rejected.",
+    "alreadyEnrolled": "You are already enrolled in this course.",
+    "prerequisiteNotMet": "You must complete the prerequisite course first.",
+    "courseNotActive": "This course is not currently active.",
+    "unenrollCooldown": "You must wait 24h after enrolling to unenroll from an incomplete course.",
+    "notEnrolled": "You are not enrolled in this course.",
+    "walletNotConnected": "Wallet not connected",
+    "enrolledConfirming": "Enrolled! Confirming on-chain… It may take upto 10-15 secs based on RPC lag…",
+    "enrollmentClosed": "Enrollment closed."
+  },
   "lessons": {
     "content": "Content",
     "challenge": "Challenge",
@@ -194,7 +218,16 @@
     "backToCourse": "Back to Course",
     "enrollFirst": "Enroll First",
     "enrollRequired": "You need to enroll in this course before you can mark lessons as complete.",
-    "askQuestion": "Ask a Question"
+    "askQuestion": "Ask a Question",
+    "courseComplete": "Course Complete!",
+    "courseCompleteDescription": "Go to the course page to collect your credential NFT and reclaim rent.",
+    "rpcLagNote": "If the collect button doesn't show up, refresh the page after a few seconds — RPC indexing can lag.",
+    "serverError": "Failed to reach the server. Check your connection.",
+    "testsPassedCount": "{passed}/{total} tests passed",
+    "submitting": "Submitting...",
+    "markComplete": "Mark as Complete (+{xp} {xpLabel})",
+    "running": "Running...",
+    "hideSolution": "Hide Solution"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -222,9 +255,23 @@
     "today": "Today",
     "best": "Best",
     "noActivityYet": "No activity yet. Start a course to earn XP!",
+    "frozenDay": "Freeze used",
+    "streakInfoTitle": "Streak Rules",
+    "streakInfoDesc": "Complete any XP-earning activity daily to maintain your streak. Streaks count lessons, challenges, and achievements.",
+    "streakInfoFreezes": "Streak freezes remaining: {count}/3",
+    "streakInfoReplenish": "Freezes replenish to 3 on your first activity each month.",
     "startChallenge": "Start Challenge",
     "linkWalletForActivity": "Link a wallet in Settings to see your XP activity.",
-    "recentXPActivity": "Recent XP Activity"
+    "recentXPActivity": "Recent XP Activity",
+    "justNow": "Just now",
+    "yesterday": "Yesterday",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "sourceLesson": "Completed lesson",
+    "sourceCourse": "Course completed",
+    "sourceCreatorReward": "Creator reward",
+    "sourceAchievement": "Achievement unlocked",
+    "sourceReward": "XP reward"
   },
   "profile": {
     "title": "Profile",
@@ -246,7 +293,9 @@
     "verified": "Verified",
     "shareProfile": "Share Profile",
     "linkCopied": "Profile link copied to clipboard!",
-    "toNextLevel": "progress to next level"
+    "toNextLevel": "progress to next level",
+    "eligibleAchievements": "You have {count} achievement(s) ready to claim!",
+    "goToDashboard": "Go to Dashboard to claim"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -268,7 +317,17 @@
     "signInToRefresh": "Sign In to Refresh Leaderboard",
     "lastSyncedOnChain": "Last refreshed with on-chain data on {date}",
     "autoRefreshNotice": "Leaderboard is automatically synced every 24 hours.",
-    "nothingToRefresh": "Nothing to refresh - your data is already up to date!"
+    "nothingToRefresh": "Nothing to refresh - your data is already up to date!",
+    "allSources": "All Sources",
+    "allAchievements": "All Achievements",
+    "sourceLessons": "Lessons",
+    "sourceCourseCompletions": "Course Completions",
+    "sourceCreatorRewards": "Creator Rewards",
+    "sourceAchievements": "Achievements",
+    "sourceXpRewards": "XP Rewards",
+    "synced": "Leaderboard synced with on-chain data!",
+    "syncError": "Network error while syncing",
+    "syncFailed": "Failed to sync leaderboard"
   },
   "settings": {
     "title": "Settings",
@@ -323,7 +382,8 @@
     "changeAvatar": "Change Avatar",
     "uploadingAvatar": "Uploading...",
     "avatarUpdated": "Avatar updated!",
-    "avatarTooLarge": "Image must be under 2MB"
+    "avatarTooLarge": "Image must be under 2MB",
+    "switchedProfile": "You are now signed in as \"{name}\" because this account was already linked to that profile."
   },
   "certificates": {
     "title": "Certificate of Completion",
@@ -384,7 +444,10 @@
     "eligible": "Eligible",
     "locked": "Locked",
     "claiming": "Claiming...",
-    "claimFailed": "Failed to claim achievement"
+    "claimFailed": "Failed to claim achievement",
+    "supplyExhausted": "Supply exhausted ({current}/{max} claimed)",
+    "achievementCriteria": "How to earn",
+    "supplyInfo": "{current}/{max} claimed"
   },
   "community": {
     "title": "Community",
@@ -534,7 +597,33 @@
     "achievementCreatedToast": "Achievement created on-chain. The table will auto-refresh in ~15 seconds. Auto-claim achievements require code changes in achievement-checker.ts. Manual-only achievements can be awarded from this panel.",
     "recipientUsername": "Username",
     "userNotFound": "User not found",
-    "noWalletLinked": "User has no wallet linked"
+    "noWalletLinked": "User has no wallet linked",
+    "actionFailed": "Network error: {error}",
+    "courseActionSuccess": "Course {action}d successfully",
+    "collectionCreatedToast": "Collection created: {key}",
+    "collectionFailed": "Failed to create collection",
+    "achievementDeactivated": "Achievement type deactivated. The table will auto-refresh in ~15 seconds.",
+    "challengeDeleted": "Challenge deleted",
+    "achievementAwarded": "Achievement awarded on-chain",
+    "challengeCreated": "Challenge created",
+    "challengeUpdated": "Challenge updated",
+    "updateFailed": "Update failed",
+    "operationFailed": "Operation failed",
+    "searchPlaceholder": "Search by name, email, or username...",
+    "achievementIdPlaceholder": "e.g. bug-hunter",
+    "metadataUriPlaceholder": "https://arweave.net/...",
+    "questionPlaceholder": "e.g. What is a PDA in Solana?",
+    "metadataUri": "Metadata URI",
+    "maxSupply": "Max Supply",
+    "xpReward": "XP Reward",
+    "award": "Award",
+    "categoryFundamentals": "Fundamentals",
+    "categoryPrograms": "Programs",
+    "categoryTokens": "Tokens",
+    "categoryDeFi": "DeFi",
+    "categorySecurity": "Security",
+    "categoryTooling": "Tooling",
+    "categoryEcosystem": "Ecosystem"
   },
   "creator": {
     "title": "Creator Dashboard",

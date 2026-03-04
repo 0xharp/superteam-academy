@@ -3,7 +3,7 @@ import type { LeaderboardEntry } from "@/types/gamification";
 import { calculateLevel } from "@/types/gamification";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getSyncService } from "./onchain-sync";
-import { getCoursePDA } from "@/lib/solana/on-chain";
+import type { XpMintRecord } from "./onchain-sync";
 
 interface ProfileRow {
   username: string | null;
@@ -50,31 +50,31 @@ class SupabaseLeaderboardService implements LeaderboardService {
     return data?.value ?? null;
   }
 
-  private courseIdToPda(courseId: string): string | null {
-    try {
-      return getCoursePDA(courseId)[0].toBase58();
-    } catch {
-      return null;
-    }
-  }
-
   async getLeaderboard(params: {
     timeframe: "weekly" | "monthly" | "alltime";
     courseId?: string;
+    source?: string;
+    achievementId?: string;
   }): Promise<{ entries: LeaderboardEntry[]; lastSyncedAt: string | null }> {
-    const { timeframe, courseId } = params;
     const lastSyncedAt = await this.getLastSyncedAt();
-    const entries = await this.fromTransactions(timeframe, courseId);
+    const entries = await this.fromTransactions(params);
     return { entries, lastSyncedAt };
   }
 
-  private async fromTransactions(timeframe: string, courseId?: string): Promise<LeaderboardEntry[]> {
+  private async fromTransactions(params: {
+    timeframe: string;
+    courseId?: string;
+    source?: string;
+    achievementId?: string;
+  }): Promise<LeaderboardEntry[]> {
+    const { timeframe, courseId, source, achievementId } = params;
     const query = this.db
       .from("xp_transactions")
       .select("user_id, amount, profiles!inner(username, display_name, avatar_url)");
 
-    const coursePda = courseId ? this.courseIdToPda(courseId) : null;
-    if (coursePda) query.eq("course_pda", coursePda);
+    if (courseId) query.eq("course_id", courseId);
+    if (source) query.eq("source", source);
+    if (achievementId) query.eq("achievement_id", achievementId);
 
     if (timeframe === "weekly" || timeframe === "monthly") {
       const cutoff = new Date();
@@ -148,13 +148,7 @@ class SupabaseLeaderboardService implements LeaderboardService {
     return { processed, lastSignature: latestSignature };
   }
 
-  private async recordXpEvent(record: {
-    walletAddress: string;
-    amount: number;
-    coursePda: string;
-    signature: string;
-    timestamp: number;
-  }): Promise<boolean> {
+  private async recordXpEvent(record: XpMintRecord): Promise<boolean> {
     const { data: profile } = await this.db
       .from("profiles")
       .select("id")
@@ -174,15 +168,12 @@ class SupabaseLeaderboardService implements LeaderboardService {
 
     const transactionAt = new Date(record.timestamp * 1000).toISOString();
 
-    const source = record.coursePda.startsWith("ach:")
-      ? "achievement"
-      : "onchain_sync";
-
     const { error } = await this.db.from("xp_transactions").insert({
       user_id: profile.id,
       amount: record.amount,
-      source,
-      course_pda: record.coursePda,
+      source: record.source,
+      course_id: record.courseId,
+      achievement_id: record.achievementId,
       tx_signature: record.signature,
       transaction_at: transactionAt,
     });
@@ -202,7 +193,6 @@ class SupabaseLeaderboardService implements LeaderboardService {
     await this.db.from("user_stats").upsert({
       user_id: profile.id,
       total_xp: newTotal,
-      level: calculateLevel(newTotal).level,
       last_activity_date: transactionAt.slice(0, 10),
     });
 

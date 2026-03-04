@@ -6,6 +6,8 @@ export interface StreakData {
   isActiveToday: boolean;
   /** Dates (YYYY-MM-DD) with activity in the last 28 days, used by the calendar. */
   activityDates?: string[];
+  /** Dates (YYYY-MM-DD) within the current streak where a freeze was used. */
+  frozenDates?: string[];
 }
 
 export interface Achievement {
@@ -13,9 +15,11 @@ export interface Achievement {
   achievementId: string;
   name: string;
   description: string;
-  icon: string;
-  category: "progress" | "streak" | "skill" | "special";
   xpReward: number;
+  maxSupply: number;
+  currentSupply: number;
+  criteria?: string;
+  supplyExhausted: boolean;
   unlocked: boolean;
   unlockedAt?: string;
 }
@@ -24,18 +28,10 @@ export interface XPTransaction {
   id: string;
   userId: string;
   amount: number;
-  source:
-    | "lesson"
-    | "challenge"
-    | "course"
-    | "streak"
-    | "achievement"
-    | "daily_first"
-    | "daily_challenge"
-    | "onchain_sync";
-  sourceId?: string;
-  courseName?: string;
-  createdAt: string;
+  source: "lesson" | "course" | "creator_reward" | "achievement" | "reward";
+  courseId?: string;
+  achievementId?: string;
+  transactionAt: string;
 }
 
 export interface LeaderboardEntry {

@@ -106,6 +106,102 @@ function decode(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Credential-based completed courseIds (DAS)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch courseIds that were completed and credentialed, by reading credential
+ * NFTs from Helius DAS. Server-safe — no /api calls.
+ */
+export async function fetchCredentialCompletedCourseIds(
+  walletAddress: string,
+): Promise<Set<string>> {
+  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+  if (!rpcUrl) return new Set();
+
+  try {
+    const { trackService } = await import("@/services/tracks");
+    const tracks = await trackService.getTracks();
+    const knownCollections = new Set(
+      tracks.map((t) => t.collectionAddress).filter(Boolean) as string[],
+    );
+
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "credential-course-ids",
+        method: "getAssetsByOwner",
+        params: { ownerAddress: walletAddress, page: 1, limit: 100 },
+      }),
+    });
+
+    const json = await response.json();
+    const items = json?.result?.items ?? [];
+    const courseIds = new Set<string>();
+
+    for (const item of items) {
+      // Filter by known collection
+      const grouping = item.grouping as
+        | Array<{ group_key: string; group_value: string }>
+        | undefined;
+      if (knownCollections.size > 0) {
+        const collectionGroup = grouping?.find(
+          (g: { group_key: string }) => g.group_key === "collection",
+        );
+        if (!collectionGroup || !knownCollections.has(collectionGroup.group_value))
+          continue;
+      }
+
+      // Extract completed_course_ids attribute
+      const content = item.content as Record<string, unknown> | undefined;
+      if (!content) continue;
+
+      const metadata = content.metadata as Record<string, unknown> | undefined;
+      const jsonAttrs =
+        (metadata?.attributes as Array<{ trait_type: string; value: string }>) ?? [];
+      const plugins = item.plugins as Record<string, unknown> | undefined;
+      const pluginAttrList = (
+        plugins?.attributes as {
+          data?: { attribute_list?: Array<{ key: string; value: string }> };
+        }
+      )?.data?.attribute_list ?? [];
+      const attributes =
+        jsonAttrs.length > 0
+          ? jsonAttrs
+          : pluginAttrList.map((a) => ({ trait_type: a.key, value: a.value }));
+
+      const completedAttr = attributes.find(
+        (a) => a.trait_type === "completed_course_ids",
+      );
+      let ids: string[] = [];
+      if (completedAttr) {
+        ids = completedAttr.value.split(",").map((s) => s.trim()).filter(Boolean);
+      } else {
+        const jsonUri = content.json_uri as string | undefined;
+        if (jsonUri) {
+          try {
+            const param = new URL(jsonUri).searchParams.get("completedCourseIds");
+            if (param) ids = param.split(",").map((s) => s.trim()).filter(Boolean);
+          } catch { /* invalid URI */ }
+        }
+      }
+
+      for (const id of ids) courseIds.add(id);
+    }
+
+    return courseIds;
+  } catch {
+    return new Set();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 function popcount(n: BN): number {
   let count = 0;
   let v = n.clone();

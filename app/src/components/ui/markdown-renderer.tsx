@@ -31,7 +31,8 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
 
-  // Extract language from children
+  // Extract language from children — rehype-highlight may add language-* even
+  // when the markdown had no explicit lang (auto-detection).
   let language = "";
 
   if (
@@ -47,6 +48,7 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
     language = langMatch?.[1] ?? "";
   }
 
+
   const handleCopy = useCallback(() => {
     const text = preRef.current?.textContent ?? "";
     if (!text) return;
@@ -57,41 +59,27 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="group relative mb-4 overflow-hidden rounded-lg border border-[#373e47] bg-[#22272e]">
-      {language && (
-        <div className="flex items-center justify-between border-b border-[#373e47] bg-[#2d333b] px-4 py-2">
-          <span className="text-xs font-medium text-[#768390]">
-            {displayLang[language] ?? language}
-          </span>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#768390] transition-colors hover:bg-[#373e47] hover:text-[#adbac7]"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3" />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
-      )}
-      {!language && (
+      <div className="flex items-center justify-between border-b border-[#373e47] bg-[#2d333b] px-4 py-2">
+        <span className="text-xs font-medium text-[#768390]">
+          {language ? (displayLang[language] ?? language) : "Code"}
+        </span>
         <button
           onClick={handleCopy}
-          className="absolute right-2 top-2 flex items-center gap-1 rounded px-2 py-1 text-xs text-[#768390] opacity-0 transition-all hover:bg-[#373e47] hover:text-[#adbac7] group-hover:opacity-100"
+          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#768390] transition-colors hover:bg-[#373e47] hover:text-[#adbac7]"
         >
           {copied ? (
-            <Check className="h-3 w-3" />
+            <>
+              <Check className="h-3 w-3" />
+              Copied
+            </>
           ) : (
-            <Copy className="h-3 w-3" />
+            <>
+              <Copy className="h-3 w-3" />
+              Copy
+            </>
           )}
         </button>
-      )}
+      </div>
       <pre
         ref={preRef}
         className="overflow-x-auto !bg-transparent !p-4 text-sm leading-relaxed !m-0"
@@ -201,7 +189,7 @@ export function MarkdownRenderer({
     <div className={`max-w-none ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        rehypePlugins={[[rehypeHighlight, { detect: true }]]}
         components={components}
       >
         {content}

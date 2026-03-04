@@ -6,12 +6,6 @@ import {
   COURSE_BY_SLUG_QUERY,
   TRACKS_QUERY,
 } from "@/lib/sanity/queries";
-import {
-  COURSE_CARDS,
-  TRACKS,
-  getCourseBySlug as getMockCourseBySlug,
-  getLessonById as getMockLessonById,
-} from "@/lib/mock-data";
 import type { Course, CourseCardData, Track } from "@/types/course";
 
 const hasSanity = !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID &&
@@ -19,6 +13,14 @@ const hasSanity = !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID &&
 
 const hasOnChain = !!process.env.NEXT_PUBLIC_PROGRAM_ID &&
   process.env.NEXT_PUBLIC_PROGRAM_ID !== "11111111111111111111111111111111";
+
+function requireSanity(): void {
+  if (!hasSanity) {
+    throw new Error(
+      "Sanity is not configured. Set NEXT_PUBLIC_SANITY_PROJECT_ID to enable course content.",
+    );
+  }
+}
 
 /**
  * Returns the courseIds of all active on-chain Course accounts.
@@ -189,7 +191,7 @@ async function getAllOnChainCourseIds(): Promise<string[] | null> {
  * Used by the dashboard for enrollment display and rent reclaim.
  */
 export async function getDashboardCourseCards(): Promise<CourseCardData[]> {
-  if (!hasSanity) return COURSE_CARDS;
+  requireSanity();
   try {
     const onChainIds = await getAllOnChainCourseIds();
     if (onChainIds !== null) {
@@ -207,7 +209,7 @@ export async function getDashboardCourseCards(): Promise<CourseCardData[]> {
 }
 
 export async function getCourseCards(): Promise<CourseCardData[]> {
-  if (!hasSanity) return COURSE_CARDS;
+  requireSanity();
   try {
     // When program is configured, only show courses registered and active on-chain.
     const onChainIds = await getOnChainActiveCourseIds();
@@ -227,7 +229,7 @@ export async function getCourseCards(): Promise<CourseCardData[]> {
 }
 
 export async function getTracks(): Promise<Track[]> {
-  if (!hasSanity) return TRACKS;
+  requireSanity();
   try {
     const results = await sanityClient.fetch(TRACKS_QUERY);
     if (!results || results.length === 0) return [];
@@ -251,13 +253,7 @@ export async function getTracks(): Promise<Track[]> {
  */
 export async function getCourseTitleMap(): Promise<Record<string, string>> {
   const map: Record<string, string> = {};
-  if (!hasSanity) {
-    for (const c of COURSE_CARDS) {
-      if (c.courseId) map[c.courseId] = c.title;
-      map[c.slug] = c.title;
-    }
-    return map;
-  }
+  requireSanity();
   try {
     const results: { courseId?: string; slug?: string; title?: string }[] =
       await sanityClient.fetch(
@@ -275,10 +271,7 @@ export async function getCourseTitleMap(): Promise<Record<string, string>> {
  * Returns a Set of on-chain courseIds for courses tagged with a given tag.
  */
 export async function getTaggedCourseIds(tag: string): Promise<Set<string>> {
-  if (!hasSanity) {
-    // Fallback: no tags on static cards, return empty
-    return new Set();
-  }
+  requireSanity();
   try {
     const query = `*[_type == "course" && $tag in tags[]]{  "courseId": courseId.current }`;
     const results: { courseId?: string }[] = await sanityClient.fetch(
@@ -292,7 +285,7 @@ export async function getTaggedCourseIds(tag: string): Promise<Set<string>> {
 }
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
-  if (!hasSanity) return getMockCourseBySlug(slug) || null;
+  requireSanity();
   try {
     const result = await sanityClient.fetch(COURSE_BY_SLUG_QUERY, { slug });
     if (!result) return null;
@@ -302,8 +295,9 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
   }
 }
 
-export function getLessonById(courseSlug: string, lessonId: string) {
-  return getMockLessonById(courseSlug, lessonId);
+export function getLessonById(_courseSlug: string, _lessonId: string) {
+  requireSanity();
+  return null;
 }
 
 export async function getLessonByIdAsync(courseSlug: string, lessonId: string) {

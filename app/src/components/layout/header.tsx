@@ -34,7 +34,7 @@ export function Header() {
             </span>
             <div className="hidden items-center gap-2 sm:flex">
               <span className="text-border">|</span>
-              <span className="text-xs text-muted-foreground">by</span>
+              <span className="text-xs text-muted-foreground">{t("by")}</span>
               <Image
                 src="/logos/ST-YELLOW-HORIZONTAL.svg"
                 alt="Superteam Brasil"

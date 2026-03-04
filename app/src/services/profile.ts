@@ -10,82 +10,6 @@ import {
   rowToUserStats,
 } from "@/lib/supabase/mappers";
 
-// --- Mock Implementation ---
-
-const MOCK_PROFILE: UserProfile = {
-  id: "mock-user-id",
-  username: "me",
-  displayName: "Developer",
-  email: "dev@example.com",
-  bio: "Learning Solana development at Superteam Academy",
-  avatarUrl: "",
-  socialLinks: { github: "dev" },
-  walletAddress: "HN7c...YWrH",
-  isPublic: true,
-  emailNotifications: true,
-  preferredLanguage: "en",
-  preferredTheme: "brasil",
-  createdAt: "2026-01-15T00:00:00Z",
-  updatedAt: "2026-02-16T00:00:00Z",
-};
-
-const MOCK_STATS: UserStats = {
-  userId: "mock-user-id",
-  totalXP: 3420,
-  level: 5,
-  currentStreak: 12,
-  longestStreak: 15,
-  lastActivityDate: "2026-02-16",
-  streakFreezes: 1,
-  coursesCompleted: 1,
-  lessonsCompleted: 18,
-  challengesCompleted: 6,
-  achievementFlags: [7, 0, 0, 0],
-  updatedAt: "2026-02-16T00:00:00Z",
-};
-
-class MockProfileService implements ProfileService {
-  private profile = { ...MOCK_PROFILE };
-
-  async getProfileByUsername(username: string): Promise<UserProfile | null> {
-    if (username === "me" || username === this.profile.username) {
-      return { ...this.profile };
-    }
-    return null;
-  }
-
-  async getProfileById(_userId: string): Promise<UserProfile | null> {
-    return { ...this.profile };
-  }
-
-  async updateProfile(
-    _userId: string,
-    data: ProfileUpdateData,
-  ): Promise<UserProfile> {
-    Object.assign(this.profile, data, {
-      updatedAt: new Date().toISOString(),
-    });
-    return { ...this.profile };
-  }
-
-  async checkUsernameAvailable(
-    username: string,
-    _excludeUserId?: string,
-  ): Promise<boolean> {
-    return username !== this.profile.username;
-  }
-
-  async getProfileStats(_userId: string): Promise<UserStats | null> {
-    return { ...MOCK_STATS };
-  }
-
-  async ensureProfile(): Promise<void> {
-    // No-op for mock
-  }
-}
-
-// --- Supabase Implementation ---
-
 class SupabaseProfileService implements ProfileService {
   private get db() {
     const client = getAdminClient();
@@ -217,16 +141,4 @@ class SupabaseProfileService implements ProfileService {
   }
 }
 
-// --- Singleton with fallback ---
-
-function createProfileService(): ProfileService {
-  if (
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    return new SupabaseProfileService();
-  }
-  return new MockProfileService();
-}
-
-export const profileService: ProfileService = createProfileService();
+export const profileService: ProfileService = new SupabaseProfileService();

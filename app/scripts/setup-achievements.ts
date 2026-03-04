@@ -2,17 +2,17 @@
  * Bulk-create all 12 achievement types on-chain via the backend API.
  *
  * Usage:
- *   npx tsx scripts/setup-achievements.ts
+ *   pnpm setup-achievements
  *
- * Reads env from app/.env.local (BACKEND_URL, AUTH_SECRET).
+ * Reads env from .env.local (BACKEND_URL, AUTH_SECRET).
  */
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { SignJWT } from "jose";
 
-// Load app/.env.local without requiring dotenv
-const envPath = resolve(__dirname, "../app/.env.local");
+// Load .env.local without requiring dotenv
+const envPath = resolve(__dirname, "../.env.local");
 try {
   const envContent = readFileSync(envPath, "utf8");
   for (const line of envContent.split("\n")) {
@@ -58,7 +58,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
 ];
 
 async function buildToken(): Promise<string> {
-  if (!AUTH_SECRET) throw new Error("AUTH_SECRET not set in app/.env.local");
+  if (!AUTH_SECRET) throw new Error("AUTH_SECRET not set in .env.local");
   return new SignJWT({ sub: "setup-script" })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("5m")

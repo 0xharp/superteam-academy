@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
+import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 const locales = [
   { code: "en" as const, label: "English", flag: "EN" },
@@ -25,6 +26,7 @@ export function LocaleSwitcher() {
   const current = locales.find((l) => l.code === locale) ?? locales[0];
 
   const handleLocaleChange = (code: "en" | "pt-BR" | "es") => {
+    trackEvent(ANALYTICS_EVENTS.LANGUAGE_CHANGED, { from: locale, to: code });
     router.replace(pathname, { locale: code });
     // Persist to DB (fire-and-forget, works only when logged in)
     fetch("/api/profile/preferences", {

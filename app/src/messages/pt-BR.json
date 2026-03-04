@@ -52,7 +52,20 @@
     "status": "Status",
     "actions": "Ações",
     "active": "Ativo",
-    "inactive": "Inativo"
+    "inactive": "Inativo",
+    "streakInfoTitle": "Regras de Sequencia",
+    "streakInfoDesc": "Complete qualquer atividade que gere XP diariamente para manter sua sequencia. Sequencias contam licoes, desafios e conquistas.",
+    "streakInfoFreezes": "Congelamentos de sequencia restantes: {count}/3",
+    "streakInfoReplenish": "Os congelamentos se repoem a 3 na sua primeira atividade de cada mes.",
+    "by": "por",
+    "walletConnected": "Carteira conectada!",
+    "walletLinkFailed": "Falha ao vincular carteira. Tente novamente.",
+    "switchedProfile": "Voce agora esta conectado como \"{name}\" porque esta carteira ja estava vinculada a esse perfil.",
+    "loadingChart": "Carregando grafico...",
+    "offlineMessage": "Você está offline — alguns recursos podem estar limitados",
+    "levelShort": "Nv {level}",
+    "somethingWentWrong": "Algo deu errado",
+    "tryAgain": "Tentar novamente"
   },
   "landing": {
     "newCourse": "Novo Curso",
@@ -174,6 +187,17 @@
     "alreadyCompleted": "Ja Concluido",
     "alreadyCompletedDescription": "Voce ja recebeu credito por este curso."
   },
+  "enrollment": {
+    "transactionRejected": "Transacao rejeitada.",
+    "alreadyEnrolled": "Voce ja esta matriculado neste curso.",
+    "prerequisiteNotMet": "Voce deve concluir o curso pre-requisito primeiro.",
+    "courseNotActive": "Este curso nao esta ativo no momento.",
+    "unenrollCooldown": "Voce deve esperar 24h apos a matricula para cancelar a matricula de um curso incompleto.",
+    "notEnrolled": "Voce nao esta matriculado neste curso.",
+    "walletNotConnected": "Carteira nao conectada",
+    "enrolledConfirming": "Matriculado! Confirmando on-chain… Pode levar 10-15 seg dependendo do lag do RPC…",
+    "enrollmentClosed": "Matricula encerrada."
+  },
   "lessons": {
     "content": "Conteudo",
     "challenge": "Desafio",
@@ -194,7 +218,16 @@
     "backToCourse": "Voltar ao Curso",
     "enrollFirst": "Matricule-se Primeiro",
     "enrollRequired": "Voce precisa se matricular neste curso antes de marcar licoes como concluidas.",
-    "askQuestion": "Fazer uma Pergunta"
+    "askQuestion": "Fazer uma Pergunta",
+    "courseComplete": "Curso Concluido!",
+    "courseCompleteDescription": "Va a pagina do curso para coletar sua credencial NFT e recuperar o aluguel.",
+    "rpcLagNote": "Se o botao de coletar nao aparecer, atualize a pagina apos alguns segundos — a indexacao do RPC pode atrasar.",
+    "serverError": "Nao foi possivel contatar o servidor. Verifique sua conexao.",
+    "testsPassedCount": "{passed}/{total} testes aprovados",
+    "submitting": "Enviando...",
+    "markComplete": "Marcar como Concluido (+{xp} {xpLabel})",
+    "running": "Executando...",
+    "hideSolution": "Ocultar Solucao"
   },
   "dashboard": {
     "title": "Painel",
@@ -222,9 +255,23 @@
     "today": "Hoje",
     "best": "Melhor",
     "noActivityYet": "Sem atividade ainda. Comece um curso para ganhar XP!",
+    "frozenDay": "Congelamento usado",
+    "streakInfoTitle": "Regras de Sequencia",
+    "streakInfoDesc": "Complete qualquer atividade que gere XP diariamente para manter sua sequencia. Sequencias contam licoes, desafios e conquistas.",
+    "streakInfoFreezes": "Congelamentos de sequencia restantes: {count}/3",
+    "streakInfoReplenish": "Os congelamentos se repoem a 3 na sua primeira atividade de cada mes.",
     "startChallenge": "Iniciar Desafio",
     "linkWalletForActivity": "Conecte uma carteira em Configuracoes para ver sua atividade de XP.",
-    "recentXPActivity": "Atividade Recente de XP"
+    "recentXPActivity": "Atividade Recente de XP",
+    "justNow": "Agora mesmo",
+    "yesterday": "Ontem",
+    "hoursAgo": "ha {count}h",
+    "daysAgo": "ha {count}d",
+    "sourceLesson": "Licao concluida",
+    "sourceCourse": "Curso concluido",
+    "sourceCreatorReward": "Recompensa de criador",
+    "sourceAchievement": "Conquista desbloqueada",
+    "sourceReward": "Recompensa XP"
   },
   "profile": {
     "title": "Perfil",
@@ -246,7 +293,9 @@
     "verified": "Verificado",
     "shareProfile": "Compartilhar Perfil",
     "linkCopied": "Link do perfil copiado!",
-    "toNextLevel": "progresso para o proximo nivel"
+    "toNextLevel": "progresso para o proximo nivel",
+    "eligibleAchievements": "Voce tem {count} conquista(s) prontas para resgatar!",
+    "goToDashboard": "Ir ao Dashboard para resgatar"
   },
   "leaderboard": {
     "title": "Ranking",
@@ -268,7 +317,17 @@
     "signInToRefresh": "Entrar para Atualizar Ranking",
     "lastSyncedOnChain": "Ultima atualizacao on-chain em {date}",
     "autoRefreshNotice": "O ranking e atualizado automaticamente a cada 24 horas.",
-    "nothingToRefresh": "Nada para atualizar - seus dados ja estao em dia!"
+    "nothingToRefresh": "Nada para atualizar - seus dados ja estao em dia!",
+    "allSources": "Todas as Fontes",
+    "allAchievements": "Todas as Conquistas",
+    "sourceLessons": "Licoes",
+    "sourceCourseCompletions": "Cursos Concluidos",
+    "sourceCreatorRewards": "Recompensas de Criador",
+    "sourceAchievements": "Conquistas",
+    "sourceXpRewards": "Recompensas XP",
+    "synced": "Ranking sincronizado com dados on-chain!",
+    "syncError": "Erro de rede ao sincronizar",
+    "syncFailed": "Falha ao sincronizar ranking"
   },
   "settings": {
     "title": "Configuracoes",
@@ -323,7 +382,8 @@
     "changeAvatar": "Alterar Avatar",
     "uploadingAvatar": "Enviando...",
     "avatarUpdated": "Avatar atualizado!",
-    "avatarTooLarge": "A imagem deve ter menos de 2MB"
+    "avatarTooLarge": "A imagem deve ter menos de 2MB",
+    "switchedProfile": "Voce agora esta conectado como \"{name}\" porque esta conta ja estava vinculada a esse perfil."
   },
   "certificates": {
     "title": "Certificado de Conclusao",
@@ -384,7 +444,10 @@
     "eligible": "Elegivel",
     "locked": "Bloqueado",
     "claiming": "Resgatando...",
-    "claimFailed": "Falha ao resgatar conquista"
+    "claimFailed": "Falha ao resgatar conquista",
+    "supplyExhausted": "Estoque esgotado ({current}/{max} resgatados)",
+    "achievementCriteria": "Como conquistar",
+    "supplyInfo": "{current}/{max} resgatados"
   },
   "community": {
     "title": "Comunidade",
@@ -534,7 +597,33 @@
     "achievementCreatedToast": "Conquista criada on-chain. A tabela sera atualizada automaticamente em ~15 segundos. Conquistas auto-resgate requerem alteracoes em achievement-checker.ts. Conquistas manuais podem ser concedidas deste painel.",
     "recipientUsername": "Nome de usuario",
     "userNotFound": "Usuario nao encontrado",
-    "noWalletLinked": "Usuario nao tem carteira vinculada"
+    "noWalletLinked": "Usuario nao tem carteira vinculada",
+    "actionFailed": "Erro de rede: {error}",
+    "courseActionSuccess": "Curso {action}do com sucesso",
+    "collectionCreatedToast": "Colecao criada: {key}",
+    "collectionFailed": "Falha ao criar colecao",
+    "achievementDeactivated": "Tipo de conquista desativado. A tabela sera atualizada em ~15 segundos.",
+    "challengeDeleted": "Desafio excluido",
+    "achievementAwarded": "Conquista concedida on-chain",
+    "challengeCreated": "Desafio criado",
+    "challengeUpdated": "Desafio atualizado",
+    "updateFailed": "Falha ao atualizar",
+    "operationFailed": "Falha na operacao",
+    "searchPlaceholder": "Buscar por nome, email ou usuario...",
+    "achievementIdPlaceholder": "ex. bug-hunter",
+    "metadataUriPlaceholder": "https://arweave.net/...",
+    "questionPlaceholder": "ex. O que e um PDA na Solana?",
+    "metadataUri": "URI de Metadados",
+    "maxSupply": "Estoque Maximo",
+    "xpReward": "Recompensa XP",
+    "award": "Conceder",
+    "categoryFundamentals": "Fundamentos",
+    "categoryPrograms": "Programas",
+    "categoryTokens": "Tokens",
+    "categoryDeFi": "DeFi",
+    "categorySecurity": "Seguranca",
+    "categoryTooling": "Ferramentas",
+    "categoryEcosystem": "Ecossistema"
   },
   "creator": {
     "title": "Painel do Criador",

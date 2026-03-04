@@ -39,6 +39,7 @@ import type Monaco from "monaco-editor";
 import type { editor } from "monaco-editor";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { trackEvent, ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { calculateLevel } from "@/types/gamification";
 import { useEnrollment } from "@/hooks/use-enrollment";
 import { configureMonaco } from "@/lib/editor/monaco-config";
 import { runChallenge } from "@/lib/editor/run-challenge";
@@ -101,6 +102,17 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
   const prevLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
   const nextLesson = currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null;
   const isChallenge = lesson.type === "challenge" && lesson.challenge;
+
+  // Track lesson start when enrolled (not preview)
+  useEffect(() => {
+    if (!preview && enrolled) {
+      trackEvent(ANALYTICS_EVENTS.LESSON_START, {
+        courseSlug: slug,
+        lessonId: id,
+        type: isChallenge ? "challenge" : "content",
+      });
+    }
+  }, [slug, id, preview, enrolled]);
 
   // Seed `completed` from the on-chain enrollment bitmap
   useEffect(() => {
@@ -166,24 +178,33 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
         const err = await res.json().catch(() => ({})) as { error?: string };
         toast.error(err.error ?? "Failed to record lesson completion.");
       } else {
-        const data = await res.json() as { xpEarned?: number; finalized?: boolean };
+        const data = await res.json() as { xpEarned?: number; finalized?: boolean; totalXp?: number; previousTotalXp?: number };
         setCompleted(true);
         if (course.courseId) confirmedComplete.add(`${course.courseId}:${currentIdx}`);
         refreshEnrollment();
+        if (data.xpEarned) {
+          trackEvent(ANALYTICS_EVENTS.XP_EARNED, { courseSlug: slug, lessonId: id, amount: data.xpEarned });
+          if (data.totalXp != null && data.previousTotalXp != null) {
+            const prevLevel = calculateLevel(data.previousTotalXp).level;
+            const newLevel = calculateLevel(data.totalXp).level;
+            if (newLevel > prevLevel) {
+              trackEvent(ANALYTICS_EVENTS.LEVEL_UP, { from: prevLevel, to: newLevel, totalXp: data.totalXp });
+            }
+          }
+        }
         toast.success(`+${data.xpEarned ?? 0} ${tc("xp")} earned!`);
         if (data.finalized) {
-          toast.success("Course Complete! 🎓", {
+          trackEvent(ANALYTICS_EVENTS.COURSE_COMPLETE, { courseSlug: slug, courseId: course.courseId });
+          toast.success(t("courseComplete"), {
             description: (
               <div className="space-y-1">
                 <p>
-                  Go to the{" "}
                   <a href={`/${locale}/courses/${slug}`} className="underline font-medium">
-                    course page
-                  </a>{" "}
-                  to collect your credential NFT and reclaim rent.
+                    {t("courseCompleteDescription")}
+                  </a>
                 </p>
                 <p className="text-xs opacity-70">
-                  If the collect button doesn&apos;t show up, refresh the page after a few seconds — RPC indexing can lag.
+                  {t("rpcLagNote")}
                 </p>
               </div>
             ),
@@ -191,8 +212,9 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
           });
         }
       }
-    } catch {
-      toast.error("Failed to reach the server. Check your connection.");
+    } catch (err) {
+      toast.error(t("serverError"));
+      import("@sentry/nextjs").then((S) => S.captureException(err)).catch(() => {});
     } finally {
       markingRef.current = false;
       setCompleting(false);
@@ -201,6 +223,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
 
   const runCode = useCallback(async () => {
     if (!lesson.challenge) return;
+    trackEvent(ANALYTICS_EVENTS.CHALLENGE_ATTEMPT, { courseSlug: slug, lessonId: id });
     setRunning(true);
     setOutput("");
     setTestResults([]);
@@ -212,7 +235,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
     setOutput(
       allPassed
         ? t("allTestsPassed")
-        : `${results.filter((r) => r.passed).length}/${results.length} tests passed`,
+        : t("testsPassedCount", { passed: results.filter((r) => r.passed).length, total: results.length }),
     );
     if (allPassed) {
       setCompleted(true);
@@ -236,7 +259,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
     <div className="relative flex h-[calc(100vh-4.5rem)]">
       {/* ── Navigator Sidebar ── */}
       <div
-        className={`flex flex-col border-r bg-card/50 transition-[width] duration-200 overflow-hidden shrink-0
+        className={`hidden md:flex flex-col border-r bg-card/50 transition-[width] duration-200 overflow-hidden shrink-0
           ${sidebarOpen ? "w-64" : "w-0"}`}
       >
         <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
@@ -412,7 +435,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
                     onClick={() => setShowSolution(!showSolution)}
                   >
                     <Eye className="h-4 w-4" />
-                    {showSolution ? "Hide Solution" : t("showSolution")}
+                    {showSolution ? t("hideSolution") : t("showSolution")}
                   </Button>
                   {showSolution && (
                     <div className="mt-2 overflow-hidden rounded-lg border border-[#373e47] bg-[#22272e]">
@@ -482,7 +505,7 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
                     </Button>
                     <Button size="sm" className="gap-1" onClick={runCode} disabled={running}>
                       <Play className="h-3 w-3" />
-                      {running ? "Running..." : t("runCode")}
+                      {running ? t("running") : t("runCode")}
                     </Button>
                   </div>
                 </div>
@@ -559,10 +582,10 @@ export default function LessonView({ lesson, mod, course, slug, id, preview = fa
                     {completed
                       ? t("lessonComplete")
                       : completing
-                        ? "Submitting..."
+                        ? t("submitting")
                         : !enrolled
                           ? t("enrollFirst")
-                          : `Mark as Complete (+${course.xpPerLesson ?? 0} ${tc("xp")})`}
+                          : t("markComplete", { xp: course.xpPerLesson ?? 0, xpLabel: tc("xp") })}
                   </Button>
                 </div>
               )}

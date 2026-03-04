@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Superteam Academy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1b231d;
+      color: #e4e4e7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 420px;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: #ffd23f;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: #a1a1aa;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: #ffd23f;
+      color: #1b231d;
+      font-weight: 600;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .btn:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1 id="title">You're offline</h1>
+    <p id="desc">It looks like you've lost your internet connection. Some features may be limited until you're back online.</p>
+    <button class="btn" onclick="location.reload()" id="retry">Try again</button>
+  </div>
+  <script>
+    try {
+      var lang = (navigator.language || "en").toLowerCase();
+      if (lang.startsWith("pt")) {
+        document.getElementById("title").textContent = "Voce esta offline";
+        document.getElementById("desc").textContent = "Parece que voce perdeu a conexao com a internet. Alguns recursos podem ficar limitados ate voce voltar a ficar online.";
+        document.getElementById("retry").textContent = "Tentar novamente";
+      } else if (lang.startsWith("es")) {
+        document.getElementById("title").textContent = "Estas sin conexion";
+        document.getElementById("desc").textContent = "Parece que perdiste tu conexion a internet. Algunas funciones pueden estar limitadas hasta que vuelvas a estar en linea.";
+        document.getElementById("retry").textContent = "Intentar de nuevo";
+      }
+    } catch(e) {}
+  </script>
+</body>
+</html>

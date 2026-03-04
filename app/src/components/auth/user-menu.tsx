@@ -99,7 +99,7 @@ export function UserMenu() {
           <div className="flex flex-col">
             <span className="text-sm font-medium">{session.user.name}</span>
             <span className="text-xs text-muted-foreground">
-              {session.user.email ?? "Wallet connected"}
+              {session.user.email ?? t("walletConnected")}
             </span>
           </div>
         </div>
@@ -114,15 +114,15 @@ export function UserMenu() {
             <>
               <span className="flex items-center gap-1 text-primary">
                 <Star className="h-3 w-3 fill-current" />
-                {stats.xp.toLocaleString()} XP
+                {stats.xp.toLocaleString()} {t("xp")}
               </span>
               <span className="flex items-center gap-1 text-gold">
                 <Zap className="h-3 w-3" />
-                Lv {stats.level}
+                {t("levelShort", { level: stats.level })}
               </span>
               <span className="flex items-center gap-1 text-orange-500">
                 <Flame className="h-3 w-3" />
-                {stats.streak}d
+                {stats.streak}{t("days").charAt(0)}
               </span>
             </>
           ) : null}

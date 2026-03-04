@@ -32,7 +32,7 @@ const RechartsRadar = dynamic(
     }
     return SkillRadar;
   }),
-  { ssr: false, loading: () => <div className="flex h-full items-center justify-center"><p className="text-sm text-muted-foreground">Loading chart...</p></div> },
+  { ssr: false, loading: () => <div className="flex h-full items-center justify-center"><p className="text-sm text-muted-foreground" /></div> },
 );
 import {
   Star,
@@ -49,7 +49,9 @@ import {
   Github,
   Share2,
   Check,
+  Info,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 
@@ -133,6 +135,7 @@ export default function ProfileView({
 }: ProfileViewProps) {
   const t = useTranslations("profile");
   const tc = useTranslations("common");
+  const tg = useTranslations("gamification");
 
   const walletAddress = profile.walletAddress ?? null;
   const playerStats = usePlayerStats(walletAddress);
@@ -143,20 +146,55 @@ export default function ProfileView({
     loading: coursesLoading,
   } = useCoursesCompleted(walletAddress);
 
-  const [achievements, setAchievements] = useState<{ name: string; unlocked: boolean; icon: string }[]>([]);
+  interface ProfileAchievement {
+    achievementId: string;
+    name: string;
+    unlocked: boolean;
+    criteria?: string;
+    maxSupply: number;
+    currentSupply: number;
+    supplyExhausted: boolean;
+  }
+
+  const [achievements, setAchievements] = useState<ProfileAchievement[]>([]);
   const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [eligibleCount, setEligibleCount] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams({ type: "achievements" });
     if (walletAddress) params.set("wallet", walletAddress);
-    fetch(`/api/gamification?${params}`)
+
+    const achPromise = fetch(`/api/gamification?${params}`)
       .then((res) => res.ok ? res.json() : [])
-      .then((data: Array<{ name: string; unlocked: boolean; icon: string }>) => {
-        setAchievements(data.map((d) => ({ name: d.name, unlocked: d.unlocked, icon: d.icon })));
+      .catch(() => [] as ProfileAchievement[]);
+
+    const eligiblePromise = isOwner
+      ? fetch("/api/gamification?type=eligible")
+          .then((res) => res.ok ? res.json() : [])
+          .catch(() => [] as string[])
+      : Promise.resolve([] as string[]);
+
+    Promise.all([achPromise, eligiblePromise])
+      .then(([achData, eligibleData]: [ProfileAchievement[], string[]]) => {
+        const mapped = (Array.isArray(achData) ? achData : []).map((d) => ({
+          achievementId: d.achievementId,
+          name: d.name,
+          unlocked: d.unlocked,
+          criteria: d.criteria,
+          maxSupply: d.maxSupply ?? 0,
+          currentSupply: d.currentSupply ?? 0,
+          supplyExhausted: d.supplyExhausted ?? false,
+        }));
+        setAchievements(mapped);
+
+        if (isOwner && Array.isArray(eligibleData)) {
+          const unlockedIds = new Set(mapped.filter((a) => a.unlocked).map((a) => a.achievementId));
+          const unclaimedCount = eligibleData.filter((id) => !unlockedIds.has(id)).length;
+          setEligibleCount(unclaimedCount);
+        }
       })
-      .catch(() => {})
       .finally(() => setAchievementsLoading(false));
-  }, [walletAddress]);
+  }, [walletAddress, isOwner]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -188,8 +226,8 @@ export default function ProfileView({
                 </span>
                 {profile.walletAddress && (
                   <span className="flex items-center gap-1">
-                    <Shield className="h-4 w-4" />
-                    {profile.walletAddress}
+                    <Shield className="h-4 w-4 shrink-0" />
+                    <span className="truncate max-w-[200px]">{profile.walletAddress}</span>
                   </span>
                 )}
                 {profile.socialLinks?.github && (
@@ -244,6 +282,7 @@ export default function ProfileView({
               loadingStats={playerStats.loading}
               loadingCourses={coursesLoading}
               variant="compact"
+              streakFreezes={playerStats.streak?.streakFreezes}
             />
           </div>
         </CardContent>
@@ -425,6 +464,18 @@ export default function ProfileView({
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {isOwner && eligibleCount > 0 && (
+              <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">
+                  {t("eligibleAchievements", { count: eligibleCount })}
+                </p>
+                <Link href="/dashboard">
+                  <Button variant="outline" size="sm">
+                    {t("goToDashboard")}
+                  </Button>
+                </Link>
+              </div>
+            )}
             {achievementsLoading ? (
               <div className="grid grid-cols-2 gap-2">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -437,25 +488,58 @@ export default function ProfileView({
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {[...achievements].sort((a, b) => a.name.localeCompare(b.name)).map((ach) => (
-                  <div
-                    key={ach.name}
-                    className={`flex items-center gap-2.5 rounded-lg border p-3 ${
-                      ach.unlocked
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-border/50 opacity-50"
-                    }`}
-                  >
+                {[...achievements].sort((a, b) => a.name.localeCompare(b.name)).map((ach) => {
+                  const isExhausted = ach.supplyExhausted && !ach.unlocked;
+                  return (
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ach.unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                      key={ach.achievementId}
+                      className={`relative flex items-center gap-2.5 rounded-lg border p-3 ${
+                        ach.unlocked
+                          ? "border-primary/30 bg-primary/5"
+                          : isExhausted
+                            ? "border-border/50 opacity-40"
+                            : "border-border/50 opacity-50"
+                      }`}
                     >
-                      <Trophy className="h-4 w-4" />
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ach.unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                      >
+                        <Trophy className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium leading-tight block">
+                          {ach.name}
+                        </span>
+                        {isExhausted && (
+                          <span className="text-[9px] text-muted-foreground">
+                            {ach.currentSupply}/{ach.maxSupply}
+                          </span>
+                        )}
+                      </div>
+                      {ach.criteria && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="absolute top-1.5 right-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <Info className="h-3 w-3" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="center" className="w-56 text-xs">
+                            <p className="font-medium mb-1">{tg("achievementCriteria")}</p>
+                            <p className="text-muted-foreground">{ach.criteria}</p>
+                            {ach.maxSupply > 0 && (
+                              <p className="mt-1.5 text-muted-foreground">
+                                {ach.currentSupply}/{ach.maxSupply} claimed
+                              </p>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
-                    <span className="text-xs font-medium leading-tight">
-                      {ach.name}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

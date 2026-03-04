@@ -438,10 +438,10 @@ export default function AdminPage() {
         const data = await res.json().catch(() => ({ error: "Unknown error" }));
         toast.error(data.error ?? `Action failed (${res.status})`);
       } else {
-        toast.success(`Course ${action}d successfully`);
+        toast.success(t("courseActionSuccess", { action }));
       }
     } catch (err) {
-      toast.error(`Network error: ${err instanceof Error ? err.message : "unknown"}`);
+      toast.error(t("actionFailed", { error: err instanceof Error ? err.message : "unknown" }));
     }
     setActionLoading(null);
     fetchCourses();
@@ -490,15 +490,17 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-          <TabsTrigger value="users">{t("userManagement")}</TabsTrigger>
-          <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
-          <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
-          <TabsTrigger value="testimonials">{t("testimonials")}</TabsTrigger>
-          <TabsTrigger value="achievements">{t("achievements")}</TabsTrigger>
-          <TabsTrigger value="challenges">{t("dailyChallenges")}</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex w-max">
+            <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+            <TabsTrigger value="users">{t("userManagement")}</TabsTrigger>
+            <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
+            <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
+            <TabsTrigger value="testimonials">{t("testimonials")}</TabsTrigger>
+            <TabsTrigger value="achievements">{t("achievements")}</TabsTrigger>
+            <TabsTrigger value="challenges">{t("dailyChallenges")}</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Overview / Analytics ──────────────────────────────────────── */}
         <TabsContent value="overview">
@@ -980,13 +982,13 @@ export default function AdminPage() {
                                   const res = await fetch(`/api/admin/tracks/${track.slug}/collection`, { method: "POST" });
                                   const data = await res.json();
                                   if (res.ok || data.collectionPublicKey) {
-                                    toast.success(`Collection created: ${data.collectionPublicKey || "OK"}`);
+                                    toast.success(t("collectionCreatedToast", { key: data.collectionPublicKey || "OK" }));
                                     fetchTracks();
                                   } else {
-                                    toast.error(data.error || "Failed");
+                                    toast.error(data.error || t("collectionFailed"));
                                   }
                                 } catch {
-                                  toast.error("Failed to create collection");
+                                  toast.error(t("collectionFailed"));
                                 } finally {
                                   setTrackLoading(null);
                                 }
@@ -1198,7 +1200,7 @@ export default function AdminPage() {
                                         body: JSON.stringify({ action: "deactivate" }),
                                       });
                                       if (res.ok) {
-                                        toast.success("Achievement type deactivated. The table will auto-refresh in ~15 seconds.", { duration: 8000 });
+                                        toast.success(t("achievementDeactivated"), { duration: 8000 });
                                         setTimeout(() => fetchAchievementTypes(), 15000);
                                       } else {
                                         const err = await res.json().catch(() => ({ error: "Failed" }));
@@ -1322,7 +1324,7 @@ export default function AdminPage() {
                                       setChallengeLoading(`del-${ch.id}`);
                                       const res = await fetch(`/api/admin/daily-challenges/${ch.id}`, { method: "DELETE" });
                                       if (res.ok) {
-                                        toast.success("Challenge deleted");
+                                        toast.success(t("challengeDeleted"));
                                         fetchChallenges();
                                       } else {
                                         const err = await res.json().catch(() => ({ error: "Failed" }));
@@ -1360,7 +1362,7 @@ export default function AdminPage() {
           <div className="space-y-4 py-4">
             <div>
               <label className="text-sm font-medium">Achievement ID</label>
-              <Input value={achCreateForm.achievementId} onChange={(e) => setAchCreateForm((f) => ({ ...f, achievementId: e.target.value }))} placeholder="e.g. bug-hunter" />
+              <Input value={achCreateForm.achievementId} onChange={(e) => setAchCreateForm((f) => ({ ...f, achievementId: e.target.value }))} placeholder={t("achievementIdPlaceholder")} />
             </div>
             <div>
               <label className="text-sm font-medium">{t("achievementName")}</label>
@@ -1368,7 +1370,7 @@ export default function AdminPage() {
             </div>
             <div>
               <label className="text-sm font-medium">Metadata URI</label>
-              <Input value={achCreateForm.metadataUri} onChange={(e) => setAchCreateForm((f) => ({ ...f, metadataUri: e.target.value }))} placeholder="https://arweave.net/..." />
+              <Input value={achCreateForm.metadataUri} onChange={(e) => setAchCreateForm((f) => ({ ...f, metadataUri: e.target.value }))} placeholder={t("metadataUriPlaceholder")} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1450,7 +1452,7 @@ export default function AdminPage() {
                       setAchAwardSearching(false);
                     }, 300);
                   }}
-                  placeholder="Search by name, email, or username..."
+                  placeholder={t("searchPlaceholder")}
                 />
                 {achAwardSearching && (
                   <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
@@ -1503,7 +1505,7 @@ export default function AdminPage() {
                   body: JSON.stringify({ action: "award", recipientUsername: achAwardUsername }),
                 });
                 if (res.ok) {
-                  toast.success("Achievement awarded on-chain");
+                  toast.success(t("achievementAwarded"));
                   setAchAwardDialog(null);
                   fetchAchievementTypes();
                 } else {
@@ -1513,7 +1515,7 @@ export default function AdminPage() {
                 setAchLoading(null);
               }}
             >
-              {achLoading === "award" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Award"}
+              {achLoading === "award" ? <Loader2 className="h-4 w-4 animate-spin" /> : t("award")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1531,7 +1533,7 @@ export default function AdminPage() {
               <Textarea
                 value={challengeForm.question}
                 onChange={(e) => setChallengeForm((f) => ({ ...f, question: e.target.value }))}
-                placeholder="e.g. What is a PDA in Solana?"
+                placeholder={t("questionPlaceholder")}
                 rows={2}
               />
             </div>
@@ -1587,13 +1589,13 @@ export default function AdminPage() {
                 <Select value={challengeForm.category} onValueChange={(v) => setChallengeForm((f) => ({ ...f, category: v }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fundamentals">Fundamentals</SelectItem>
-                    <SelectItem value="programs">Programs</SelectItem>
-                    <SelectItem value="tokens">Tokens</SelectItem>
-                    <SelectItem value="defi">DeFi</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
-                    <SelectItem value="tooling">Tooling</SelectItem>
-                    <SelectItem value="ecosystem">Ecosystem</SelectItem>
+                    <SelectItem value="fundamentals">{t("categoryFundamentals")}</SelectItem>
+                    <SelectItem value="programs">{t("categoryPrograms")}</SelectItem>
+                    <SelectItem value="tokens">{t("categoryTokens")}</SelectItem>
+                    <SelectItem value="defi">{t("categoryDeFi")}</SelectItem>
+                    <SelectItem value="security">{t("categorySecurity")}</SelectItem>
+                    <SelectItem value="tooling">{t("categoryTooling")}</SelectItem>
+                    <SelectItem value="ecosystem">{t("categoryEcosystem")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1620,7 +1622,7 @@ export default function AdminPage() {
                     body: JSON.stringify(challengeForm),
                   });
                   if (res.ok) {
-                    toast.success("Challenge created");
+                    toast.success(t("challengeCreated"));
                     setChallengeDialog(null);
                     fetchChallenges();
                   } else {
@@ -1634,7 +1636,7 @@ export default function AdminPage() {
                     body: JSON.stringify(challengeForm),
                   });
                   if (res.ok) {
-                    toast.success("Challenge updated");
+                    toast.success(t("challengeUpdated"));
                     setChallengeDialog(null);
                     fetchChallenges();
                   } else {
@@ -1717,12 +1719,12 @@ export default function AdminPage() {
                         const colRes = await fetch(`/api/admin/tracks/${slug}/collection`, { method: "POST" });
                         const colData = await colRes.json();
                         if (colRes.ok || colData.collectionPublicKey) {
-                          toast.success(`Collection created: ${colData.collectionPublicKey || "OK"}`);
+                          toast.success(t("collectionCreatedToast", { key: colData.collectionPublicKey || "OK" }));
                         } else {
-                          toast.error(colData.error || "Collection creation failed");
+                          toast.error(colData.error || t("collectionFailed"));
                         }
                       } catch {
-                        toast.error("Collection creation failed");
+                        toast.error(t("collectionFailed"));
                       }
                       fetchTracks();
                       setTrackDialog(null);
@@ -1741,11 +1743,11 @@ export default function AdminPage() {
                       fetchTracks();
                       setTrackDialog(null);
                     } else {
-                      toast.error("Update failed");
+                      toast.error(t("updateFailed"));
                     }
                   }
                 } catch {
-                  toast.error("Operation failed");
+                  toast.error(t("operationFailed"));
                 } finally {
                   setTrackLoading(null);
                 }
