@@ -141,6 +141,137 @@ function runJsonChallenge(code: string, challenge: ChallengeData): RunResult {
   return { results, allPassed: results.every((r) => r.passed) };
 }
 
+const RUST_DELIM = "__TEST_DELIM__";
+
+/** Parses a comma-separated input string into Rust argument literals. */
+function toRustArgs(raw: string): string {
+  if (raw.trim() === "") return "";
+  return raw.split(",").map((s) => {
+    s = s.trim();
+    // Already quoted — keep as Rust string literal
+    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return s;
+    // Numeric
+    const n = Number(s);
+    if (!isNaN(n) && s !== "") return s;
+    // Bare string — wrap in quotes
+    return `"${s}"`;
+  }).join(", ");
+}
+
+/**
+ * Builds a Rust program that runs all test cases and prints results separated by a delimiter.
+ */
+function buildRustProgram(code: string, challenge: ChallengeData): string {
+  const fnName = code.match(/fn\s+(\w+)/)?.[1] ?? "solution";
+
+  const calls = challenge.testCases.map((tc) => {
+    const args = toRustArgs(tc.input);
+    return `    __print_val(${fnName}(${args}));\n    println!("${RUST_DELIM}");`;
+  }).join("\n");
+
+  return `${code}
+
+fn __print_val<T: std::fmt::Debug>(val: T) {
+    let s = format!("{:?}", val);
+    let inner = if s.starts_with("Ok(") && s.ends_with(')') {
+        &s[3..s.len()-1]
+    } else if s.starts_with("Err(") && s.ends_with(')') {
+        &s[4..s.len()-1]
+    } else if s.starts_with("Some(") && s.ends_with(')') {
+        &s[5..s.len()-1]
+    } else if s == "None" {
+        "None"
+    } else {
+        &s
+    };
+    if inner.len() >= 2 && inner.starts_with('"') && inner.ends_with('"') {
+        println!("{}", &inner[1..inner.len()-1]);
+    } else {
+        println!("{}", inner);
+    }
+}
+
+fn main() {
+${calls}
+}`;
+}
+
+/**
+ * Runs a Rust challenge via the Rust Playground API (proxied through /api/challenges/run-rust).
+ */
+async function runRustChallenge(code: string, challenge: ChallengeData): Promise<RunResult> {
+  const program = buildRustProgram(code, challenge);
+
+  let stdout: string;
+  let stderr: string;
+  try {
+    const res = await fetch("/api/challenges/run-rust", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: program }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: "Server error" }));
+      throw new Error(errData.error ?? `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    stdout = (data.stdout ?? "") as string;
+    stderr = (data.stderr ?? "") as string;
+
+    if (!data.success) {
+      // Compilation error — show stderr to user
+      const errMsg = stderr.split("\n").filter((l: string) => l.startsWith("error")).join("\n") || stderr;
+      return {
+        results: challenge.testCases.map((tc) => ({
+          label: tc.label,
+          passed: false,
+          expected: tc.expectedOutput,
+          actual: errMsg.slice(0, 500),
+        })),
+        allPassed: false,
+      };
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to run Rust code";
+    return {
+      results: challenge.testCases.map((tc) => ({
+        label: tc.label,
+        passed: false,
+        expected: tc.expectedOutput,
+        actual: msg,
+      })),
+      allPassed: false,
+    };
+  }
+
+  // Parse outputs separated by delimiter
+  const outputs = stdout.split(RUST_DELIM).map((s) => s.trim()).filter(Boolean);
+
+  const results: TestResult[] = challenge.testCases.map((tc, i) => {
+    const actual = outputs[i] ?? "";
+    const expected = tc.expectedOutput.trim();
+    let passed: boolean;
+    if (tc.validator) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        passed = !!new Function("output", `return (${tc.validator})`)(actual);
+      } catch {
+        passed = false;
+      }
+    } else {
+      passed = actual === expected;
+    }
+    return {
+      label: tc.label,
+      passed,
+      expected: tc.validator ? `validator: ${tc.validator}` : expected,
+      actual,
+    };
+  });
+
+  return { results, allPassed: results.every((r) => r.passed) };
+}
+
 /**
  * Executes a coding challenge against its test cases.
  *
@@ -159,6 +290,10 @@ export function runChallenge(code: string, challenge: ChallengeData): Promise<Ru
 
   if (challenge.language === "json") {
     return Promise.resolve(runJsonChallenge(code, challenge));
+  }
+
+  if (challenge.language === "rust") {
+    return runRustChallenge(code, challenge);
   }
 
   return new Promise((resolve) => {

@@ -100,7 +100,6 @@ interface CourseDef {
   // On-chain create_course parameters
   xpPerLesson: number;
   lessonCount: number;
-  trackId: number;
   trackLevel: number;
   creator: string;
   creatorRewardXp: number;
@@ -120,7 +119,6 @@ const courseDefs: {
   instructorRef: string;
   // On-chain parameters
   xpPerLesson: number;
-  trackId: number;
   trackLevel: number;
   creatorRewardXp: number;
   minCompletionsForReward: number;
@@ -156,7 +154,6 @@ const courseDefs: {
     instructorRef: "instructor-ana",
     // 10 lessons × 25 XP = 250 XP total; completion bonus = ~125 XP (50%)
     xpPerLesson: 25,
-    trackId: 1,
     trackLevel: 1,
     creatorRewardXp: 50,
     minCompletionsForReward: 5,
@@ -203,7 +200,6 @@ const courseDefs: {
     instructorRef: "instructor-carlos",
     // 8 lessons × 30 XP = 240 XP total; completion bonus = ~120 XP (50%)
     xpPerLesson: 30,
-    trackId: 4,
     trackLevel: 1,
     creatorRewardXp: 75,
     minCompletionsForReward: 5,
@@ -241,7 +237,6 @@ const courseDefs: {
     instructorRef: "instructor-carlos",
     // 6 lessons × 40 XP = 240 XP total; completion bonus = ~120 XP (50%)
     xpPerLesson: 40,
-    trackId: 2,
     trackLevel: 2,
     creatorRewardXp: 100,
     minCompletionsForReward: 3,
@@ -277,7 +272,6 @@ const courseDefs: {
     instructorRef: "instructor-lucia",
     // 7 lessons × 30 XP = 210 XP total; completion bonus = ~105 XP (50%)
     xpPerLesson: 30,
-    trackId: 3,
     trackLevel: 1,
     creatorRewardXp: 75,
     minCompletionsForReward: 5,
@@ -314,7 +308,6 @@ const courseDefs: {
     instructorRef: "instructor-ana",
     // 8 lessons × 25 XP = 200 XP total; completion bonus = ~100 XP (50%)
     xpPerLesson: 25,
-    trackId: 5,
     trackLevel: 1,
     creatorRewardXp: 50,
     minCompletionsForReward: 5,
@@ -437,7 +430,6 @@ async function main() {
       modules: moduleRefs,
       xpPerLesson: courseDef.xpPerLesson,
       lessonCount: lessonIndex,
-      trackId: courseDef.trackId,
       trackLevel: courseDef.trackLevel,
       creator: PLACEHOLDER_CREATOR,
       creatorRewardXp: courseDef.creatorRewardXp,

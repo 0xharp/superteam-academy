@@ -490,17 +490,15 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="overview">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex w-max">
-            <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-            <TabsTrigger value="users">{t("userManagement")}</TabsTrigger>
-            <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
-            <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
-            <TabsTrigger value="testimonials">{t("testimonials")}</TabsTrigger>
-            <TabsTrigger value="achievements">{t("achievements")}</TabsTrigger>
-            <TabsTrigger value="challenges">{t("dailyChallenges")}</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="flex w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+          <TabsTrigger value="users">{t("userManagement")}</TabsTrigger>
+          <TabsTrigger value="courses">{t("courseManagement")}</TabsTrigger>
+          <TabsTrigger value="tracks">{t("tracks")}</TabsTrigger>
+          <TabsTrigger value="testimonials">{t("testimonials")}</TabsTrigger>
+          <TabsTrigger value="achievements">{t("achievements")}</TabsTrigger>
+          <TabsTrigger value="challenges">{t("dailyChallenges")}</TabsTrigger>
+        </TabsList>
 
         {/* ── Overview / Analytics ──────────────────────────────────────── */}
         <TabsContent value="overview">

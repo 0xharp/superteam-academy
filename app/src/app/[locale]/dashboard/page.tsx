@@ -132,15 +132,15 @@ export default function DashboardPage() {
 
   // Build the last 28 days as a real calendar grid using actual activity dates
   const streakDays = (() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const activeDatesSet = new Set(streak?.activityDates ?? []);
     const frozenDatesSet = new Set(streak?.frozenDates ?? []);
 
     return Array.from({ length: 28 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() - 27 + i);
+      const date = new Date(todayUTC);
+      date.setUTCDate(todayUTC.getUTCDate() - 27 + i);
       const dateStr = date.toISOString().split("T")[0];
 
       return {
@@ -157,16 +157,18 @@ export default function DashboardPage() {
   const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
   const calendarHeaders = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(streakDays[0].date);
-    d.setDate(d.getDate() + i);
+    d.setUTCDate(d.getUTCDate() + i);
     return weekdayFormatter.format(d);
   });
 
   // Month label — show range if the 28-day window spans two months
   const firstDay = streakDays[0].date;
   const lastDay = streakDays[streakDays.length - 1].date;
-  const monthLabel = firstDay.getMonth() === lastDay.getMonth()
-    ? firstDay.toLocaleDateString(undefined, { month: "long", year: "numeric" })
-    : `${firstDay.toLocaleDateString(undefined, { month: "short" })} – ${lastDay.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`;
+  const monthFmt = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(undefined, { ...opts, timeZone: "UTC" }).format(d);
+  const monthLabel = firstDay.getUTCMonth() === lastDay.getUTCMonth()
+    ? monthFmt(firstDay, { month: "long", year: "numeric" })
+    : `${monthFmt(firstDay, { month: "short" })} – ${monthFmt(lastDay, { month: "short", year: "numeric" })}`;
 
   function formatTime(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -354,7 +356,7 @@ export default function DashboardPage() {
                     {streakDays.map((day, i) => (
                       <div
                         key={i}
-                        title={day.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                        title={new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(day.date)}
                         className={`flex h-9 items-center justify-center rounded-lg text-[11px] font-semibold transition-all
                           ${day.active
                             ? "bg-orange-500 shadow-sm shadow-orange-500/30"
@@ -371,7 +373,7 @@ export default function DashboardPage() {
                           className={`flex h-6 w-6 items-center justify-center rounded-full
                             ${day.active ? "text-white" : day.frozen ? "text-white" : "text-muted-foreground/60"}`}
                         >
-                          {day.date.getDate()}
+                          {day.date.getUTCDate()}
                         </span>
                       </div>
                     ))}

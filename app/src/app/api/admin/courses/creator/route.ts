@@ -7,6 +7,7 @@ const sanityClient = createClient({
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET ?? "production",
   apiVersion: "2026-02-15",
   useCdn: false,
+  token: process.env.SANITY_API_TOKEN,
 });
 
 export async function GET() {
@@ -18,6 +19,8 @@ export async function GET() {
     return NextResponse.json({ error: "No wallet linked" }, { status: 400 });
   }
 
+  // Include Sanity drafts so creator can see unpublished draft courses.
+  // perspective: "previewDrafts" merges drafts over published automatically.
   const courses = await sanityClient.fetch(
     `*[_type == "course" && creator == $wallet] | order(_createdAt desc) {
       _id,
@@ -34,6 +37,7 @@ export async function GET() {
       _updatedAt
     }`,
     { wallet: walletAddress },
+    { perspective: "previewDrafts" },
   );
 
   return NextResponse.json({ courses });

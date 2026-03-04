@@ -183,19 +183,6 @@ class SupabaseLeaderboardService implements LeaderboardService {
       return false;
     }
 
-    const { data: stats } = await this.db
-      .from("user_stats")
-      .select("total_xp")
-      .eq("user_id", profile.id)
-      .single();
-
-    const newTotal = (stats?.total_xp || 0) + record.amount;
-    await this.db.from("user_stats").upsert({
-      user_id: profile.id,
-      total_xp: newTotal,
-      last_activity_date: transactionAt.slice(0, 10),
-    });
-
     return true;
   }
 }

@@ -28,7 +28,7 @@ export async function GET() {
       reviewComment,
       xpPerLesson,
       lessonCount,
-      trackId,
+      "trackId": track->trackId,
       trackLevel,
       creator,
       creatorRewardXp,

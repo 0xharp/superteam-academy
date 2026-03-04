@@ -15,9 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BookOpen, ExternalLink, MessageSquare } from "lucide-react";
+import { BookOpen, ExternalLink, MessageSquare, Plus, Pencil } from "lucide-react";
 import { SUBMISSION_STATUS } from "@/types/course";
 import { Link } from "@/i18n/routing";
+
+const EDITABLE_STATUSES = new Set([null, undefined, "waiting", "rejected"]);
 
 interface CreatorCourse {
   _id: string;
@@ -34,7 +36,8 @@ interface CreatorCourse {
 }
 
 function submissionLabel(s: string | null): string {
-  if (!s || s === SUBMISSION_STATUS.WAITING) return "Waiting For Approval";
+  if (!s) return "Draft";
+  if (s === SUBMISSION_STATUS.WAITING) return "Waiting For Approval";
   if (s === SUBMISSION_STATUS.APPROVED) return "Approved & Published";
   if (s === SUBMISSION_STATUS.REJECTED) return "Rejected";
   if (s === SUBMISSION_STATUS.DEACTIVATED) return "Deactivated";
@@ -42,7 +45,8 @@ function submissionLabel(s: string | null): string {
 }
 
 function submissionVariant(s: string | null): "default" | "secondary" | "destructive" | "outline" {
-  if (!s || s === SUBMISSION_STATUS.WAITING) return "secondary";
+  if (!s) return "outline";
+  if (s === SUBMISSION_STATUS.WAITING) return "secondary";
   if (s === SUBMISSION_STATUS.APPROVED) return "default";
   if (s === SUBMISSION_STATUS.REJECTED) return "destructive";
   return "outline";
@@ -102,9 +106,17 @@ export default function CreatorPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-8 flex items-center gap-3">
-        <BookOpen className="h-6 w-6 text-primary" />
-        <h1 className="text-3xl font-bold">{t("title")}</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BookOpen className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+        </div>
+        <Button asChild>
+          <Link href="/creator/new">
+            <Plus className="h-4 w-4 mr-2" />
+            {t("createCourse")}
+          </Link>
+        </Button>
       </div>
 
       {loading ? (
@@ -150,11 +162,30 @@ export default function CreatorPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/courses/preview/${course.courseId}`} target="_blank">
+                        {EDITABLE_STATUSES.has(course.submissionStatus) ? (
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/creator/edit/${course.courseId}`}>
+                              <Pencil className="mr-1 h-3 w-3" />
+                              {tc("edit")}
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" disabled>
+                            <Pencil className="mr-1 h-3 w-3" />
+                            {tc("edit")}
+                          </Button>
+                        )}
+                        {course.submissionStatus ? (
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/courses/preview/${course.courseId}`} target="_blank">
+                              {t("preview")}
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" disabled>
                             {t("preview")}
-                          </Link>
-                        </Button>
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" asChild>
                           <a
                             href={`https://${process.env.NEXT_PUBLIC_SANITY_STUDIO_HOST ?? "superteam-academy"}.sanity.studio/structure/course;${course._id}`}

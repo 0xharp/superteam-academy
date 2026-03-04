@@ -20,6 +20,8 @@ export type CourseAction = (typeof COURSE_ACTIONS)[keyof typeof COURSE_ACTIONS];
 
 export interface Track {
   id: string;
+  /** Raw Sanity document _id — needed for Sanity references in the wizard. */
+  sanityId?: string;
   name: string;
   slug: string;
   description: string;

@@ -63,7 +63,6 @@ CREATE TABLE accounts (
 -- Level is always derived from XP via calculateLevel() — not stored.
 CREATE TABLE user_stats (
   user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  total_xp INTEGER DEFAULT 0,
   current_streak INTEGER DEFAULT 0,
   longest_streak INTEGER DEFAULT 0,
   last_activity_date DATE,

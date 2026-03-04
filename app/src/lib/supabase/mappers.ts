@@ -24,7 +24,6 @@ export function rowToProfile(row: any): UserProfile {
 export function rowToUserStats(row: any): UserStats {
   return {
     userId: row.user_id,
-    totalXP: row.total_xp ?? 0,
     currentStreak: row.current_streak ?? 0,
     longestStreak: row.longest_streak ?? 0,
     lastActivityDate: row.last_activity_date ?? null,

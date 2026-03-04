@@ -24,7 +24,6 @@ export interface SocialLinks {
 
 export interface UserStats {
   userId: string;
-  totalXP: number;
   currentStreak: number;
   longestStreak: number;
   lastActivityDate: string | null;

@@ -58,6 +58,7 @@ export async function PATCH(
   const course = await sanityWriteClient.fetch(
     `*[_type == "course" && courseId.current == $courseId][0]{
       ...,
+      "trackId": track->trackId,
       "actualLessonCount": count(modules[]->lessons[])
     }`,
     { courseId },

@@ -137,7 +137,7 @@ function sanityCourseToFull(c: Record<string, unknown>): Course {
         description: m.description as string || "",
         order: m.order as number || 0,
         lessons: lessons.map((l) => ({
-          id: l._id as string || l.slug as string || "",
+          id: l.slug as string || l._id as string || "",
           title: l.title as string || "",
           slug: l.slug as string || "",
           type: (l.type as "content" | "challenge") || "content",
@@ -235,6 +235,7 @@ export async function getTracks(): Promise<Track[]> {
     if (!results || results.length === 0) return [];
     return results.map((t: Record<string, unknown>) => ({
       id: t.slug as string || t._id as string || "",
+      sanityId: t._id as string || "",
       name: t.name as string || "",
       slug: t.slug as string || "",
       description: t.description as string || "",
