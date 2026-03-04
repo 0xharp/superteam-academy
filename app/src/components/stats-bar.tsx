@@ -20,8 +20,7 @@ interface StatsBarProps {
   streakFreezes?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StreakInfoPopover({ freezes, t }: { freezes: number; t: (key: string, values?: any) => string }) {
+function StreakInfoPopover({ freezes, t }: { freezes: number; t: (key: string, values?: Record<string, string | number | Date>) => string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>

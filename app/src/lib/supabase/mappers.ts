@@ -1,8 +1,32 @@
 import type { UserProfile, UserStats } from "@/types/user";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+interface ProfileRow {
+  id: string;
+  username?: string;
+  display_name?: string;
+  email?: string;
+  bio?: string;
+  avatar_url?: string;
+  social_links?: Record<string, string>;
+  wallet_address?: string;
+  is_public?: boolean;
+  email_notifications?: boolean;
+  preferred_language?: string;
+  preferred_theme?: string;
+  created_at: string;
+  updated_at: string;
+}
 
-export function rowToProfile(row: any): UserProfile {
+interface StatsRow {
+  user_id: string;
+  current_streak?: number;
+  longest_streak?: number;
+  last_activity_date?: string | null;
+  streak_freezes?: number;
+  updated_at: string;
+}
+
+export function rowToProfile(row: ProfileRow): UserProfile {
   return {
     id: row.id,
     username: row.username ?? "",
@@ -21,7 +45,7 @@ export function rowToProfile(row: any): UserProfile {
   };
 }
 
-export function rowToUserStats(row: any): UserStats {
+export function rowToUserStats(row: StatsRow): UserStats {
   return {
     userId: row.user_id,
     currentStreak: row.current_streak ?? 0,
